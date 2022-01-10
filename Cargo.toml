@@ -1,0 +1,20 @@
+[package]
+name = "gman"
+version = "0.1.0"
+authors = ["Nick Pillitteri"]
+description = "Blah blah blah"
+homepage = "https://github.com/56quarters/gman"
+repository = "https://github.com/56quarters/gman"
+readme = "README.md"
+license = "GPL-3.0+"
+edition = "2021"
+
+[dependencies]
+clap = { version = "3.0.0-rc.8", features = ["cargo", "derive", "std"], default-features = false }
+reqwest = { version = "0.11", features = ["json"] }
+tokio = { version = "1.14.0", features = ["full"] }
+prometheus = { version = "0.13.0", features = ["process"] }
+serde = { version = "1.0.101", features = ["derive"] }
+serde_json = "1.0.41"
+tracing = "0.1.11"
+tracing-subscriber = "0.1.6"
