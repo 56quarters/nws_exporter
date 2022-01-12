@@ -246,6 +246,7 @@ name = "gman"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "percent-encoding",
  "prometheus",
  "reqwest",
  "serde",
@@ -253,6 +254,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
 ]
 
 [[package]]
