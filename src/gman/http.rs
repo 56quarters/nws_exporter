@@ -18,19 +18,35 @@
 
 use hyper::header::CONTENT_TYPE;
 use hyper::{Body, Method, Request, Response, StatusCode};
-use prometheus::{Encoder, TextEncoder, TEXT_FORMAT};
+use prometheus::{Encoder, Registry, TextEncoder, TEXT_FORMAT};
+use std::sync::Arc;
 use tracing::{event, Level};
 
-pub async fn http_route(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+/// Global stated shared between all HTTP requests via Arc.
+pub struct RequestContext {
+    registry: Registry,
+}
+
+impl RequestContext {
+    pub fn new(registry: Registry) -> Self {
+        RequestContext { registry }
+    }
+}
+
+pub async fn http_route(req: Request<Body>, context: Arc<RequestContext>) -> Result<Response<Body>, hyper::Error> {
     let method = req.method().clone();
     let path = req.uri().path().to_owned();
 
     let res = match (&method, path.as_ref()) {
         (&Method::GET, "/metrics") => {
+            // Encoding metrics into the text exposition format is simple and fast enough that
+            // we just do it here inline with handling the request (as opposed to creating a
+            // dedicated struct to handle it).
             let mut buf = Vec::new();
             let encoder = TextEncoder::new();
+            let metrics = context.registry.gather();
 
-            match encoder.encode(&prometheus::gather(), &mut buf) {
+            match encoder.encode(&metrics, &mut buf) {
                 Ok(_) => {
                     event!(
                         Level::DEBUG,

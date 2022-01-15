@@ -18,7 +18,8 @@
 
 use clap::Parser;
 use gman::client::WeatherGovClient;
-use gman::http::http_route;
+use gman::http::{http_route, RequestContext};
+use gman::metrics::ForecastMetrics;
 use hyper::service::{make_service_fn, service_fn};
 use hyper::Server;
 use reqwest::Client;
@@ -26,9 +27,10 @@ use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
 use std::process;
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::signal::unix::{self, SignalKind};
-use tracing::{event, Level};
+use tracing::{event, span, Instrument, Level};
 
 /*
 const UNIT_METERS: &str = "wmoUnit:m";
@@ -42,7 +44,7 @@ const UNIT_PASCALS: &str = "wmoUnit:Pa";
 const DEFAULT_LOG_LEVEL: Level = Level::INFO;
 const DEFAULT_BIND_ADDR: ([u8; 4], u16) = ([0, 0, 0, 0], 9782);
 const DEFAULT_REFERSH_SECS: u64 = 300;
-const DEFAULT_API_URL: &'static str = "https://api.weather.gov/";
+const DEFAULT_API_URL: &str = "https://api.weather.gov/";
 
 #[derive(Debug, Parser)]
 #[clap(name = "gman", version = clap::crate_version ! ())]
@@ -82,9 +84,19 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     .expect("failed to set tracing subscriber");
 
     let startup = Instant::now();
-    // TODO(56quarters): Put a registry into a request context instead of using the global one?
-    // TODO(56quarters): Add a trace to the request handler future
-    let service = make_service_fn(move |_| async move { Ok::<_, hyper::Error>(service_fn(http_route)) });
+    let registry = prometheus::default_registry().clone();
+    let metrics = ForecastMetrics::new(&registry);
+    let context = Arc::new(RequestContext::new(registry));
+    let service = make_service_fn(move |_| {
+        let context = context.clone();
+
+        async move {
+            Ok::<_, hyper::Error>(service_fn(move |req| {
+                http_route(req, context.clone()).instrument(span!(Level::DEBUG, "gman_request"))
+            }))
+        }
+    });
+
     let server = Server::try_bind(&opts.bind).unwrap_or_else(|e| {
         event!(
             Level::ERROR,
@@ -107,13 +119,24 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         let mut interval_stream = tokio::time::interval(interval);
 
         loop {
-            // TODO(56quarters): Something that owns a bunch of metrics and updates them
-            //  based on the results of the API call.
-
             let _ = interval_stream.tick().await;
-
-            // TODO(56quarters): Handle errors here and log them
-            println!("{:?}", client.observation(&station).await);
+            match client.observation(&station).await {
+                Ok(f) => {
+                    metrics.observe(&f);
+                    event!(
+                        Level::DEBUG,
+                        message = "fetched new forecast",
+                        forecast = ?f,
+                    );
+                }
+                Err(e) => {
+                    event!(
+                        Level::ERROR,
+                        message = "failed to fetch forecast",
+                        error = %e,
+                    );
+                }
+            }
         }
     });
 
