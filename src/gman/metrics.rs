@@ -21,10 +21,9 @@ use prometheus::{GaugeVec, Opts, Registry};
 
 const NAMESPACE: &str = "gman";
 const LABEL_STATION: &str = "station";
-const LABEL_ELEVATION: &str = "elevation";
 
 pub struct ForecastMetrics {
-    station_info: GaugeVec,
+    elevation: GaugeVec,
     temperature: GaugeVec,
     dewpoint: GaugeVec,
     barometric_pressure: GaugeVec,
@@ -35,9 +34,9 @@ pub struct ForecastMetrics {
 
 impl ForecastMetrics {
     pub fn new(reg: &Registry) -> Self {
-        let station_info = GaugeVec::new(
-            Opts::new("station_info", "Information about the weather station").namespace(NAMESPACE),
-            &[LABEL_STATION, LABEL_ELEVATION],
+        let elevation = GaugeVec::new(
+            Opts::new("elevation_meters", "Elevation in meters").namespace(NAMESPACE),
+            &[LABEL_STATION],
         )
         .unwrap();
 
@@ -77,7 +76,7 @@ impl ForecastMetrics {
         )
         .unwrap();
 
-        reg.register(Box::new(station_info.clone())).unwrap();
+        reg.register(Box::new(elevation.clone())).unwrap();
         reg.register(Box::new(temperature.clone())).unwrap();
         reg.register(Box::new(dewpoint.clone())).unwrap();
         reg.register(Box::new(barometric_pressure.clone())).unwrap();
@@ -86,7 +85,7 @@ impl ForecastMetrics {
         reg.register(Box::new(wind_chill.clone())).unwrap();
 
         Self {
-            station_info,
+            elevation,
             temperature,
             dewpoint,
             barometric_pressure,
@@ -97,44 +96,19 @@ impl ForecastMetrics {
     }
 
     pub fn observe(&self, obs: &Observation) {
-        self.set_station_info(obs);
-
         let station = &obs.properties.station;
-        self.temperature
-            .with_label_values(&[station])
-            .set(self.must_measurement(&obs.properties.temperature));
-
-        self.dewpoint
-            .with_label_values(&[station])
-            .set(self.must_measurement(&obs.properties.dewpoint));
-
-        self.barometric_pressure
-            .with_label_values(&[station])
-            .set(self.must_measurement(&obs.properties.barometric_pressure));
-
-        self.visibility
-            .with_label_values(&[station])
-            .set(self.must_measurement(&obs.properties.visibility));
-
-        self.relative_humidity
-            .with_label_values(&[station])
-            .set(self.must_measurement(&obs.properties.relative_humidity));
-
-        self.wind_chill
-            .with_label_values(&[station])
-            .set(self.must_measurement(&obs.properties.wind_chill));
+        self.set_from_measurement(station, &self.elevation, &obs.properties.elevation);
+        self.set_from_measurement(station, &self.temperature, &obs.properties.temperature);
+        self.set_from_measurement(station, &self.dewpoint, &obs.properties.dewpoint);
+        self.set_from_measurement(station, &self.barometric_pressure, &obs.properties.barometric_pressure);
+        self.set_from_measurement(station, &self.visibility, &obs.properties.visibility);
+        self.set_from_measurement(station, &self.relative_humidity, &obs.properties.relative_humidity);
+        self.set_from_measurement(station, &self.wind_chill, &obs.properties.wind_chill);
     }
 
-    fn set_station_info(&self, obs: &Observation) {
-        self.station_info
-            .with_label_values(&[
-                &obs.properties.station,
-                &format!("{}", self.must_measurement(&obs.properties.elevation)),
-            ])
-            .set(1.0);
-    }
-
-    fn must_measurement(&self, measurement: &Measurement) -> f64 {
-        measurement.value.unwrap()
+    fn set_from_measurement(&self, station: &str, gauge: &GaugeVec, measurement: &Measurement) {
+        if let Some(v) = measurement.value {
+            gauge.with_label_values(&[station]).set(v);
+        }
     }
 }
