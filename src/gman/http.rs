@@ -52,6 +52,7 @@ pub async fn http_route(req: Request<Body>, context: Arc<RequestContext>) -> Res
                         Level::DEBUG,
                         message = "encoded prometheus metrics to text format",
                         num_bytes = buf.len(),
+                        num_metrics = metrics.len(),
                     );
 
                     Response::builder()
