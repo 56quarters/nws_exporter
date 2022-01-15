@@ -28,9 +28,8 @@ use std::io;
 use std::net::SocketAddr;
 use std::process;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::signal::unix::{self, SignalKind};
-use tokio::time::Instant;
 use tracing::{event, span, Instrument, Level};
 
 const DEFAULT_LOG_LEVEL: Level = Level::INFO;
