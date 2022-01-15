@@ -246,6 +246,7 @@ name = "gman"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "hyper",
  "percent-encoding",
  "prometheus",
  "reqwest",
