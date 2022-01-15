@@ -20,6 +20,7 @@ use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::header::{ACCEPT, USER_AGENT};
 use reqwest::{Client, Url};
 use serde::{Deserialize, Serialize};
+use tracing::{event, Level};
 
 pub struct WeatherGovClient {
     client: Client,
@@ -44,7 +45,12 @@ impl WeatherGovClient {
 
     pub async fn observation(&self, station: &str) -> Result<Observation, reqwest::Error> {
         let request_url = self.observation_url(station);
-        println!("URL: {}", request_url);
+
+        event!(
+            Level::DEBUG,
+            message = "making latest observation request",
+            url = %request_url,
+        );
 
         let res = self
             .client
