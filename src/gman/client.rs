@@ -43,7 +43,7 @@ impl WeatherGovClient {
     }
 
     pub async fn observation(&self, station: &str) -> Result<Observation, reqwest::Error> {
-        let request_url = self.url(station);
+        let request_url = self.observation_url(station);
         println!("URL: {}", request_url);
 
         let res = self
@@ -63,21 +63,30 @@ impl WeatherGovClient {
         Ok(obs.unwrap())
     }
 
-    fn url(&self, station: &str) -> Url {
+    fn station_url(&self, station: &str) -> Url {
         let encoded_station = utf8_percent_encode(station, NON_ALPHANUMERIC);
         let mut url = self.base_url.clone();
         {
-            // TODO(56quarters): Should this be a panic?
             url.path_segments_mut()
                 .map(|mut p| {
-                    p.clear()
-                        .push("stations")
-                        .push(&encoded_station.to_string())
-                        .push("observations")
-                        .push("latest");
+                    p.clear().push("stations").push(&encoded_station.to_string());
                 })
-                .expect("unable to modify URL path segments");
+                .expect("unable to modify station URL path segments");
         }
+
+        url
+    }
+
+    fn observation_url(&self, station: &str) -> Url {
+        let mut url = self.station_url(station);
+        {
+            url.path_segments_mut()
+                .map(|mut p| {
+                    p.push("observations").push("latest");
+                })
+                .expect("unable to modify observation URL path segments");
+        }
+
         url
     }
 }
@@ -85,105 +94,95 @@ impl WeatherGovClient {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Observation {
     #[serde(alias = "id")]
-    id: String,
+    pub id: String,
     #[serde(alias = "type")]
-    type_: String,
-    #[serde(alias = "geometry")]
-    geometry: Geometry,
+    pub type_: String,
     #[serde(alias = "properties")]
-    properties: Properties,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Geometry {
-    #[serde(alias = "type")]
-    type_: String,
-    #[serde(alias = "coordinates")]
-    coordinates: [f64; 2],
+    pub properties: Properties,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Properties {
     #[serde(alias = "@id")]
-    id: String,
+    pub id: String,
     #[serde(alias = "@type")]
-    type_: String,
+    pub type_: String,
     #[serde(alias = "elevation")]
-    elevation: Measurement,
+    pub elevation: Measurement,
     #[serde(alias = "station")]
-    station: String,
+    pub station: String,
     #[serde(alias = "timestamp")]
-    timestamp: String,
+    pub timestamp: String,
     #[serde(alias = "rawMessage")]
-    raw_message: String,
+    pub raw_message: String,
     #[serde(alias = "textDescription")]
-    description: String,
+    pub description: String,
     #[serde(alias = "icon")]
-    icon: String,
+    pub icon: String,
     #[serde(alias = "presentWeather")]
-    present_weather: Vec<Weather>,
+    pub present_weather: Vec<Weather>,
     #[serde(alias = "temperature")]
-    temperature: Measurement,
+    pub temperature: Measurement,
     #[serde(alias = "dewpoint")]
-    dewpoint: Measurement,
+    pub dewpoint: Measurement,
     #[serde(alias = "windDirection")]
-    wind_direction: Measurement,
+    pub wind_direction: Measurement,
     #[serde(alias = "windSpeed")]
-    wind_speed: Measurement,
+    pub wind_speed: Measurement,
     #[serde(alias = "windGust")]
-    wind_gust: Measurement,
+    pub wind_gust: Measurement,
     #[serde(alias = "barometricPressure")]
-    barometric_pressure: Measurement,
+    pub barometric_pressure: Measurement,
     #[serde(alias = "seaLevelPressure")]
-    sea_level_pressure: Measurement,
+    pub sea_level_pressure: Measurement,
     #[serde(alias = "visibility")]
-    visibility: Measurement,
+    pub visibility: Measurement,
     #[serde(alias = "maxTemperatureLast24Hours")]
-    max_temperature_last_24_hours: Measurement,
+    pub max_temperature_last_24_hours: Measurement,
     #[serde(alias = "minTemperatureLast24Hours")]
-    min_temperature_last_24_hours: Measurement,
+    pub min_temperature_last_24_hours: Measurement,
     #[serde(alias = "precipitationLastHour")]
-    precipitation_last_hour: Measurement,
+    pub precipitation_last_hour: Measurement,
     #[serde(alias = "precipitationLast3Hours")]
-    precipitation_last_3_hours: Measurement,
+    pub precipitation_last_3_hours: Measurement,
     #[serde(alias = "precipitationLast6Hours")]
-    precipitation_last_6_hours: Measurement,
+    pub precipitation_last_6_hours: Measurement,
     #[serde(alias = "relativeHumidity")]
-    relative_humidity: Measurement,
+    pub relative_humidity: Measurement,
     #[serde(alias = "windChill")]
-    wind_chill: Measurement,
+    pub wind_chill: Measurement,
     #[serde(alias = "heatIndex")]
-    heat_index: Measurement,
+    pub heat_index: Measurement,
     #[serde(alias = "cloudLayers")]
-    cloud_layers: Vec<CloudLayer>,
+    pub cloud_layers: Vec<CloudLayer>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Weather {
     #[serde(alias = "intensity")]
-    intensity: String,
+    pub intensity: String,
     #[serde(alias = "modifier")]
-    modifier: Option<String>,
+    pub modifier: Option<String>,
     #[serde(alias = "weather")]
-    weather: String,
+    pub weather: String,
     #[serde(alias = "rawString")]
-    raw_string: String,
+    pub raw_string: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CloudLayer {
     #[serde(alias = "base")]
-    base: Measurement,
+    pub base: Measurement,
     #[serde(alias = "amount")]
-    amount: String,
+    pub amount: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Measurement {
     #[serde(alias = "unitCode")]
-    unit_code: String,
+    pub unit_code: String,
     #[serde(alias = "value")]
-    value: Option<f64>,
+    pub value: Option<f64>,
     #[serde(alias = "qualityControl")]
-    quality_control: Option<String>,
+    pub quality_control: Option<String>,
 }

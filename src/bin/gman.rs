@@ -32,15 +32,6 @@ use std::time::{Duration, Instant};
 use tokio::signal::unix::{self, SignalKind};
 use tracing::{event, span, Instrument, Level};
 
-/*
-const UNIT_METERS: &str = "wmoUnit:m";
-const UNIT_DEGREES_C: &str = "wmoUnit:degC";
-const UNIT_PERCENT: &str = "wmoUnit:percent";
-const UNIT_DEGREES_ANGLE: &str = "wmoUnit:degree_(angle)";
-const UNIT_KPH: &str = "wmoUnit:km_h-1";
-const UNIT_PASCALS: &str = "wmoUnit:Pa";
- */
-
 const DEFAULT_LOG_LEVEL: Level = Level::INFO;
 const DEFAULT_BIND_ADDR: ([u8; 4], u16) = ([0, 0, 0, 0], 9782);
 const DEFAULT_REFERSH_SECS: u64 = 300;
@@ -120,13 +111,17 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
         loop {
             let _ = interval_stream.tick().await;
-            match client.observation(&station).await {
-                Ok(f) => {
-                    metrics.observe(&f);
+            match client
+                .observation(&station)
+                .instrument(span!(Level::DEBUG, "gman_observation"))
+                .await
+            {
+                Ok(obs) => {
+                    metrics.observe(&obs);
                     event!(
                         Level::DEBUG,
                         message = "fetched new forecast",
-                        forecast = ?f,
+                        forecast = ?obs,
                     );
                 }
                 Err(e) => {
