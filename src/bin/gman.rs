@@ -28,8 +28,9 @@ use std::io;
 use std::net::SocketAddr;
 use std::process;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::signal::unix::{self, SignalKind};
+use tokio::time::Instant;
 use tracing::{event, span, Instrument, Level};
 
 const DEFAULT_LOG_LEVEL: Level = Level::INFO;
@@ -111,6 +112,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
         loop {
             let _ = interval_stream.tick().await;
+
             match client
                 .observation(&station)
                 .instrument(span!(Level::DEBUG, "gman_observation"))
@@ -119,8 +121,9 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                 Ok(obs) => {
                     metrics.observe(&obs);
                     event!(
-                        Level::DEBUG,
+                        Level::TRACE,
                         message = "fetched new forecast",
+                        runtime_secs = startup.elapsed().as_secs(),
                         forecast = ?obs,
                     );
                 }
