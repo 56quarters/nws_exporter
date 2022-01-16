@@ -120,11 +120,11 @@ pub struct Properties {
     #[serde(alias = "timestamp")]
     pub timestamp: String,
     #[serde(alias = "rawMessage")]
-    pub raw_message: String,
+    pub raw_message: Option<String>,
     #[serde(alias = "textDescription")]
-    pub description: String,
+    pub description: Option<String>,
     #[serde(alias = "icon")]
-    pub icon: String,
+    pub icon: Option<String>,
     #[serde(alias = "presentWeather")]
     pub present_weather: Vec<Weather>,
     #[serde(alias = "temperature")]
@@ -143,16 +143,6 @@ pub struct Properties {
     pub sea_level_pressure: Measurement,
     #[serde(alias = "visibility")]
     pub visibility: Measurement,
-    #[serde(alias = "maxTemperatureLast24Hours")]
-    pub max_temperature_last_24_hours: Measurement,
-    #[serde(alias = "minTemperatureLast24Hours")]
-    pub min_temperature_last_24_hours: Measurement,
-    #[serde(alias = "precipitationLastHour")]
-    pub precipitation_last_hour: Measurement,
-    #[serde(alias = "precipitationLast3Hours")]
-    pub precipitation_last_3_hours: Measurement,
-    #[serde(alias = "precipitationLast6Hours")]
-    pub precipitation_last_6_hours: Measurement,
     #[serde(alias = "relativeHumidity")]
     pub relative_humidity: Measurement,
     #[serde(alias = "windChill")]
