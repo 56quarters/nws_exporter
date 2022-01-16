@@ -22,6 +22,7 @@ use prometheus::{GaugeVec, Opts, Registry};
 const NAMESPACE: &str = "gman";
 const LABEL_STATION: &str = "station";
 
+#[derive(Debug)]
 pub struct ForecastMetrics {
     elevation: GaugeVec,
     temperature: GaugeVec,
