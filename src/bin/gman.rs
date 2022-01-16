@@ -38,7 +38,7 @@ const DEFAULT_REFERSH_SECS: u64 = 300;
 const DEFAULT_API_URL: &str = "https://api.weather.gov/";
 
 #[derive(Debug, Parser)]
-#[clap(name = "gman", version = clap::crate_version ! ())]
+#[clap(name = "gman", version = clap::crate_version!())]
 struct GmanApplication {
     /// NWS weather station ID to fetch forecasts for
     #[clap(long)]
@@ -120,10 +120,10 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                 Ok(obs) => {
                     metrics.observe(&obs);
                     event!(
-                        Level::TRACE,
+                        Level::DEBUG,
                         message = "fetched new forecast",
+                        observation = %obs.id,
                         runtime_secs = startup.elapsed().as_secs(),
-                        forecast = ?obs,
                     );
                 }
                 Err(e) => {
@@ -131,6 +131,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
                         Level::ERROR,
                         message = "failed to fetch forecast",
                         error = %e,
+                        runtime_secs = startup.elapsed().as_secs(),
                     );
                 }
             }
