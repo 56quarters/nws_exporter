@@ -35,6 +35,7 @@ use tracing::{event, span, Instrument, Level};
 const DEFAULT_LOG_LEVEL: Level = Level::INFO;
 const DEFAULT_BIND_ADDR: ([u8; 4], u16) = ([0, 0, 0, 0], 9782);
 const DEFAULT_REFERSH_SECS: u64 = 300;
+const DEFAULT_TIMEOUT_MILLIS: u64 = 5000;
 const DEFAULT_API_URL: &str = "https://api.weather.gov/";
 
 #[derive(Debug, Parser)]
@@ -56,6 +57,10 @@ struct GmanApplication {
     /// Fetch weather forecasts from the Weather.gov API at this interval, in seconds.
     #[clap(long, default_value_t = DEFAULT_REFERSH_SECS)]
     refresh_secs: u64,
+
+    /// Timeout for fetching weather forecasts from the Weather.gov API, in milliseconds.
+    #[clap(long, default_value_t =DEFAULT_TIMEOUT_MILLIS )]
+    timeout_millis: u64,
 
     /// Address to bind to. By default, gman will bind to public address since
     /// the purpose is to expose metrics to an external system (Prometheus or another
@@ -100,17 +105,27 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         process::exit(1);
     });
 
+    let timeout = Duration::from_millis(opts.timeout_millis);
+    let http_client = Client::builder().timeout(timeout).build().unwrap_or_else(|e| {
+        event!(
+            Level::ERROR,
+            message = "unable to initialize HTTP client",
+            error = %e,
+            timeout_millis = opts.timeout_millis,
+        );
+
+        process::exit(1)
+    });
+
     // TODO(56quarters): Do a client.station() call to make sure the station supplied by the
     //  user is valid before going into a loop making requests for it.
-    let client = WeatherGovClient::new(Client::new(), &opts.api_url);
     let station = opts.station.clone();
-    let interval = Duration::from_secs(opts.refresh_secs);
+    let client = WeatherGovClient::new(http_client, &opts.api_url);
+    let mut interval = tokio::time::interval(Duration::from_secs(opts.refresh_secs));
 
     tokio::spawn(async move {
-        let mut interval_stream = tokio::time::interval(interval);
-
         loop {
-            let _ = interval_stream.tick().await;
+            let _ = interval.tick().await;
 
             match client
                 .observation(&station)

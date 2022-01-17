@@ -16,12 +16,42 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+use hyper::StatusCode;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::header::{ACCEPT, USER_AGENT};
-use reqwest::{Client, Url};
+use reqwest::{Client, Response, Url};
 use serde::{Deserialize, Serialize};
+use std::error;
+use std::fmt;
 use tracing::{event, Level};
 
+#[derive(Debug)]
+pub enum ClientError {
+    Internal(reqwest::Error),
+    InvalidStation(String),
+    Unexpected(StatusCode, Url),
+}
+
+impl fmt::Display for ClientError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Internal(e) => write!(f, "{}", e),
+            Self::InvalidStation(s) => write!(f, "invalid station {}", s),
+            Self::Unexpected(status, url) => write!(f, "unexpected status {} for {}", status, url),
+        }
+    }
+}
+
+impl error::Error for ClientError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match self {
+            Self::Internal(e) => Some(e),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct WeatherGovClient {
     client: Client,
     base_url: Url,
@@ -39,11 +69,11 @@ impl WeatherGovClient {
         }
     }
 
-    pub async fn station(&self, _station: &str) -> Result<(), reqwest::Error> {
+    pub async fn station(&self, _station: &str) -> Result<Station, ClientError> {
         todo!("method to show some information about a weather station, run once at startup (validation)")
     }
 
-    pub async fn observation(&self, station: &str) -> Result<Observation, reqwest::Error> {
+    pub async fn observation(&self, station: &str) -> Result<Observation, ClientError> {
         let request_url = self.observation_url(station);
 
         event!(
@@ -52,21 +82,28 @@ impl WeatherGovClient {
             url = %request_url,
         );
 
+        let res = self.make_request(station, request_url).await?;
+        Ok(res.json::<Observation>().await.map_err(ClientError::Internal)?)
+    }
+
+    async fn make_request<S: Into<String>>(&self, station: S, url: Url) -> Result<Response, ClientError> {
         let res = self
             .client
-            .get(request_url)
+            .get(url.clone())
             .header(USER_AGENT, Self::USER_AGENT)
             .header(ACCEPT, Self::JSON_RESPONSE)
             .send()
-            .await?;
+            .await
+            .map_err(ClientError::Internal)?;
 
-        // TODO(56quarters): handle non-200 here
-
-        let obs = res.json::<Observation>().await;
-
-        // TODO(56quarters): handle malformed JSON
-
-        Ok(obs.unwrap())
+        let status = res.status();
+        if status == StatusCode::OK {
+            Ok(res)
+        } else if status == StatusCode::NOT_FOUND {
+            Err(ClientError::InvalidStation(station.into()))
+        } else {
+            Err(ClientError::Unexpected(status, url))
+        }
     }
 
     fn station_url(&self, station: &str) -> Url {
@@ -96,6 +133,9 @@ impl WeatherGovClient {
         url
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Station {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Observation {
