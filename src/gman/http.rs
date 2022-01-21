@@ -25,6 +25,7 @@ use warp::reply::Response;
 use warp::{Filter, Reply};
 
 /// Global stated shared between all HTTP requests via Arc.
+#[derive(Debug)]
 pub struct RequestContext {
     registry: Registry,
 }
@@ -45,6 +46,7 @@ pub fn text_metrics(
     })
 }
 
+#[derive(Debug)]
 pub struct GatheredMetrics {
     metrics: Vec<MetricFamily>,
 }
@@ -56,7 +58,7 @@ impl GatheredMetrics {
 }
 
 impl Reply for GatheredMetrics {
-    fn into_response(self) -> warp::reply::Response {
+    fn into_response(self) -> Response {
         let mut buf = Vec::new();
         let encoder = TextEncoder::new();
 
