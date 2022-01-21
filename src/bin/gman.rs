@@ -18,19 +18,17 @@
 
 use clap::Parser;
 use gman::client::WeatherGovClient;
-use gman::http::{http_route, RequestContext};
+use gman::http::RequestContext;
 use gman::metrics::ForecastMetrics;
-use hyper::service::{make_service_fn, service_fn};
-use hyper::Server;
 use reqwest::Client;
 use std::error::Error;
 use std::io;
 use std::net::SocketAddr;
 use std::process;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tokio::signal::unix::{self, SignalKind};
-use tracing::{event, span, Instrument, Level};
+use tracing::{Instrument, Level};
 
 const DEFAULT_LOG_LEVEL: Level = Level::INFO;
 const DEFAULT_BIND_ADDR: ([u8; 4], u16) = ([0, 0, 0, 0], 9782);
@@ -59,7 +57,7 @@ struct GmanApplication {
     refresh_secs: u64,
 
     /// Timeout for fetching weather forecasts from the Weather.gov API, in milliseconds.
-    #[clap(long, default_value_t =DEFAULT_TIMEOUT_MILLIS )]
+    #[clap(long, default_value_t = DEFAULT_TIMEOUT_MILLIS)]
     timeout_millis: u64,
 
     /// Address to bind to. By default, gman will bind to public address since
@@ -79,104 +77,60 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     )
     .expect("failed to set tracing subscriber");
 
-    let startup = Instant::now();
-    let registry = prometheus::default_registry().clone();
-    let metrics = ForecastMetrics::new(&registry);
-    let context = Arc::new(RequestContext::new(registry));
-    let service = make_service_fn(move |_| {
-        let context = context.clone();
-
-        async move {
-            Ok::<_, hyper::Error>(service_fn(move |req| {
-                http_route(req, context.clone()).instrument(span!(Level::DEBUG, "gman_request"))
-            }))
-        }
-    });
-
-    let server = Server::try_bind(&opts.bind).unwrap_or_else(|e| {
-        event!(
-            Level::ERROR,
-            message = "server failed to start",
-            error = %e,
-            address = %opts.bind,
-            api_url = %opts.api_url,
-        );
-
-        process::exit(1);
-    });
-
     let timeout = Duration::from_millis(opts.timeout_millis);
     let http_client = Client::builder().timeout(timeout).build().unwrap_or_else(|e| {
-        event!(
-            Level::ERROR,
-            message = "unable to initialize HTTP client",
-            error = %e,
-            timeout_millis = opts.timeout_millis,
-        );
-
+        tracing::error!(message = "unable to initialize HTTP client", error = %e);
         process::exit(1)
     });
 
+    let client = WeatherGovClient::new(http_client, &opts.api_url);
+    let registry = prometheus::default_registry().clone();
+    let metrics = ForecastMetrics::new(&registry);
     // TODO(56quarters): Do a client.station() call to make sure the station supplied by the
     //  user is valid before going into a loop making requests for it.
     let station = opts.station.clone();
-    let client = WeatherGovClient::new(http_client, &opts.api_url);
     let mut interval = tokio::time::interval(Duration::from_secs(opts.refresh_secs));
 
     tokio::spawn(async move {
+        tracing::info!(message = "forecast polling started", api_url = %opts.api_url);
+
         loop {
             let _ = interval.tick().await;
-
             match client
                 .observation(&station)
-                .instrument(span!(Level::DEBUG, "gman_observation"))
+                .instrument(tracing::span!(Level::DEBUG, "gman_observation"))
                 .await
             {
                 Ok(obs) => {
                     metrics.observe(&obs);
-                    event!(
-                        Level::DEBUG,
-                        message = "fetched new forecast",
-                        observation = %obs.id,
-                        runtime_secs = startup.elapsed().as_secs(),
-                    );
+                    tracing::debug!(message = "fetched new forecast", observation = %obs.id);
                 }
                 Err(e) => {
-                    event!(
-                        Level::ERROR,
-                        message = "failed to fetch forecast",
-                        error = %e,
-                        runtime_secs = startup.elapsed().as_secs(),
-                    );
+                    tracing::error!(message = "failed to fetch forecast", error = %e);
                 }
             }
         }
     });
 
-    event!(
-        Level::INFO,
-        message = "server started",
-        address = %opts.bind,
-        api_url = %opts.api_url,
-    );
-
-    server
-        .serve(service)
-        .with_graceful_shutdown(async {
+    let context = Arc::new(RequestContext::new(registry));
+    let handler = gman::http::text_metrics(context);
+    let (sock, server) = warp::serve(handler)
+        .try_bind_with_graceful_shutdown(opts.bind, async {
             // Wait for either SIGTERM or SIGINT to shutdown
             tokio::select! {
                 _ = sigterm() => {}
                 _ = sigint() => {}
             }
         })
-        .await?;
+        .unwrap_or_else(|e| {
+            tracing::error!(message = "error binding to address", address = %opts.bind, error = %e);
+            process::exit(1)
+        });
 
-    event!(
-        Level::INFO,
-        message = "server shutdown",
-        runtime_secs = %startup.elapsed().as_secs(),
-    );
+    tracing::info!(message = "server started", address = %sock);
+    server.await;
 
+    tracing::info!("server shutdown");
     Ok(())
 }
 

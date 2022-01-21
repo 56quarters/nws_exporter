@@ -23,7 +23,6 @@ use reqwest::{Client, Response, Url};
 use serde::{Deserialize, Serialize};
 use std::error;
 use std::fmt;
-use tracing::{event, Level};
 
 #[derive(Debug)]
 pub enum ClientError {
@@ -69,18 +68,17 @@ impl WeatherGovClient {
         }
     }
 
-    pub async fn station(&self, _station: &str) -> Result<Station, ClientError> {
-        todo!("method to show some information about a weather station, run once at startup (validation)")
+    pub async fn station(&self, station: &str) -> Result<Station, ClientError> {
+        let station_url = self.station_url(station);
+        tracing::debug!(message = "making station information request", url = %station_url);
+
+        let res = self.make_request(station, station_url).await?;
+        Ok(res.json::<Station>().await.map_err(ClientError::Internal)?)
     }
 
     pub async fn observation(&self, station: &str) -> Result<Observation, ClientError> {
         let request_url = self.observation_url(station);
-
-        event!(
-            Level::DEBUG,
-            message = "making latest observation request",
-            url = %request_url,
-        );
+        tracing::debug!(message = "making latest observation request", url = %request_url);
 
         let res = self.make_request(station, request_url).await?;
         Ok(res.json::<Observation>().await.map_err(ClientError::Internal)?)
@@ -135,7 +133,30 @@ impl WeatherGovClient {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Station {}
+pub struct Station {
+    #[serde(alias = "id")]
+    pub id: String,
+    #[serde(alias = "type")]
+    pub type_: String,
+    #[serde(alias = "properties")]
+    pub properties: StationProperties,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StationProperties {
+    #[serde(alias = "@id")]
+    pub id: String,
+    #[serde(alias = "@type")]
+    pub type_: String,
+    #[serde(alias = "elevation")]
+    pub elevation: Measurement,
+    #[serde(alias = "stationIdentifier")]
+    pub station_identifier: String,
+    #[serde(alias = "name")]
+    pub name: String,
+    #[serde(alias = "timezone")]
+    pub timezone: String,
+}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Observation {
@@ -144,11 +165,11 @@ pub struct Observation {
     #[serde(alias = "type")]
     pub type_: String,
     #[serde(alias = "properties")]
-    pub properties: Properties,
+    pub properties: ObservationProperties,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Properties {
+pub struct ObservationProperties {
     #[serde(alias = "@id")]
     pub id: String,
     #[serde(alias = "@type")]

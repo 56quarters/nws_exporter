@@ -16,11 +16,13 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-use hyper::header::CONTENT_TYPE;
-use hyper::{Body, Method, Request, Response, StatusCode};
+use prometheus::proto::MetricFamily;
 use prometheus::{Encoder, Registry, TextEncoder, TEXT_FORMAT};
 use std::sync::Arc;
-use tracing::{event, Level};
+use warp::http::header::CONTENT_TYPE;
+use warp::http::{HeaderValue, StatusCode};
+use warp::reply::Response;
+use warp::{Filter, Reply};
 
 /// Global stated shared between all HTTP requests via Arc.
 pub struct RequestContext {
@@ -33,54 +35,46 @@ impl RequestContext {
     }
 }
 
-pub async fn http_route(req: Request<Body>, context: Arc<RequestContext>) -> Result<Response<Body>, hyper::Error> {
-    let method = req.method().clone();
-    let path = req.uri().path().to_owned();
-
-    let res = match (&method, path.as_ref()) {
-        (&Method::GET, "/metrics") => {
-            // Encoding metrics into the text exposition format is simple and fast enough that
-            // we just do it here inline with handling the request (as opposed to creating a
-            // dedicated struct to handle it).
-            let mut buf = Vec::new();
-            let encoder = TextEncoder::new();
-            let metrics = context.registry.gather();
-
-            match encoder.encode(&metrics, &mut buf) {
-                Ok(_) => {
-                    event!(
-                        Level::DEBUG,
-                        message = "encoded prometheus metrics to text format",
-                        num_bytes = buf.len(),
-                        num_metrics = metrics.len(),
-                    );
-
-                    Response::builder()
-                        .status(StatusCode::OK)
-                        .header(CONTENT_TYPE, TEXT_FORMAT)
-                        .body(Body::from(buf))
-                        .unwrap()
-                }
-                Err(e) => {
-                    event!(
-                        Level::ERROR,
-                        message = "error encoding metrics",
-                        error = %e,
-                    );
-
-                    http_status_no_body(StatusCode::SERVICE_UNAVAILABLE)
-                }
-            }
-        }
-
-        (_, "/metrics") => http_status_no_body(StatusCode::METHOD_NOT_ALLOWED),
-
-        _ => http_status_no_body(StatusCode::NOT_FOUND),
-    };
-
-    Ok(res)
+pub fn text_metrics(
+    context: Arc<RequestContext>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("metrics").and(warp::filters::method::get()).map(move || {
+        let context = context.clone();
+        let metrics = context.registry.gather();
+        GatheredMetrics::new(metrics)
+    })
 }
 
-fn http_status_no_body(code: StatusCode) -> Response<Body> {
-    Response::builder().status(code).body(Body::empty()).unwrap()
+pub struct GatheredMetrics {
+    metrics: Vec<MetricFamily>,
+}
+
+impl GatheredMetrics {
+    pub fn new(metrics: Vec<MetricFamily>) -> Self {
+        GatheredMetrics { metrics }
+    }
+}
+
+impl Reply for GatheredMetrics {
+    fn into_response(self) -> warp::reply::Response {
+        let mut buf = Vec::new();
+        let encoder = TextEncoder::new();
+
+        match encoder.encode(&self.metrics, &mut buf) {
+            Ok(_) => {
+                tracing::debug!(
+                    message = "encoded prometheus metrics to text format",
+                    num_metrics = self.metrics.len()
+                );
+                let mut res = Response::new(buf.into());
+                res.headers_mut()
+                    .insert(CONTENT_TYPE, HeaderValue::from_static(TEXT_FORMAT));
+                res
+            }
+            Err(e) => {
+                tracing::error!(message = "error encoding metrics to text format", error = %e);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
 }
