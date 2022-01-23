@@ -22,7 +22,7 @@ use std::sync::Arc;
 use warp::http::header::CONTENT_TYPE;
 use warp::http::{HeaderValue, StatusCode};
 use warp::reply::Response;
-use warp::{Filter, Reply};
+use warp::{Filter, Rejection, Reply};
 
 /// Global stated shared between all HTTP requests via Arc.
 #[derive(Debug)]
@@ -36,9 +36,11 @@ impl RequestContext {
     }
 }
 
-pub fn text_metrics(
-    context: Arc<RequestContext>,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+/// Create a warp Filter implementation that renders Prometheus metrics from
+/// a registry in the text exposition format at the path `/metrics` for `GET`
+/// requests. If an error is encountered, an HTTP 500 will be returned and the
+/// error will be logged.
+pub fn text_metrics(context: Arc<RequestContext>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path("metrics").and(warp::filters::method::get()).map(move || {
         let context = context.clone();
         let metrics = context.registry.gather();
@@ -46,6 +48,7 @@ pub fn text_metrics(
     })
 }
 
+/// Prometheus metrics that can be rendered in text exposition format.
 #[derive(Debug)]
 pub struct GatheredMetrics {
     metrics: Vec<MetricFamily>,

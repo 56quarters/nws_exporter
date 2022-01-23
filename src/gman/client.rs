@@ -16,10 +16,9 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::header::{ACCEPT, USER_AGENT};
-use reqwest::{Client, Response, Url, StatusCode};
+use reqwest::{Client, Response, StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use std::error;
 use std::fmt;
