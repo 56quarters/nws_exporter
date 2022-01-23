@@ -1,0 +1,20 @@
+[Unit]
+Description=Prometheus metrics exporter for api.weather.gov
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gman --station kbos --log-level debug
+
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=true
+ProtectControlGroups=yes
+ProtectKernelModules=yes
+ProtectKernelTunables=yes
+RestrictNamespaces=yes
+
+[Install]
+WantedBy=multi-user.target
