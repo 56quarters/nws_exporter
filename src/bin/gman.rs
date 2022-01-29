@@ -17,7 +17,7 @@
 //
 
 use clap::Parser;
-use gman::client::WeatherGovClient;
+use gman::client::{ClientError, WeatherGovClient};
 use gman::http::RequestContext;
 use gman::metrics::ForecastMetrics;
 use reqwest::Client;
@@ -37,7 +37,7 @@ const DEFAULT_TIMEOUT_MILLIS: u64 = 5000;
 const DEFAULT_API_URL: &str = "https://api.weather.gov/";
 
 #[derive(Debug, Parser)]
-#[clap(name = "gman", version = clap::crate_version!())]
+#[clap(name = "gman", version = clap::crate_version ! ())]
 struct GmanApplication {
     /// NWS weather station ID to fetch forecasts for
     #[clap(long)]
@@ -83,16 +83,30 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         process::exit(1)
     });
 
+    // Make an initial request to fetch station information. This allows us to verify that the
+    // station the user provided is valid and the API is available before starting the HTTP server
+    // and running indefinitely.
     let client = WeatherGovClient::new(http_client, &opts.api_url);
+    match client.station(&opts.station).await {
+        Err(ClientError::InvalidStation(station)) => {
+            tracing::error!(message = "invalid station provided", station = %station);
+            process::exit(1)
+        }
+        Err(e) => {
+            tracing::warn!(message = "failed to fetch initial station information", error = %e);
+        }
+        Ok(s) => {
+            tracing::debug!(message = "verified station information", station = ?s);
+        }
+    }
+
+    let station = opts.station.clone();
     let registry = prometheus::default_registry().clone();
     let metrics = ForecastMetrics::new(&registry);
-    // TODO(56quarters): Do a client.station() call to make sure the station supplied by the
-    //  user is valid before going into a loop making requests for it.
-    let station = opts.station.clone();
     let mut interval = tokio::time::interval(Duration::from_secs(opts.refresh_secs));
 
     tokio::spawn(async move {
-        tracing::info!(message = "forecast polling started", api_url = %opts.api_url);
+        tracing::info!(message = "forecast polling started", api_url = %opts.api_url, station = %station);
 
         loop {
             let _ = interval.tick().await;
@@ -103,7 +117,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             {
                 Ok(obs) => {
                     metrics.observe(&obs);
-                    tracing::debug!(message = "fetched new forecast", observation = %obs.id);
+                    tracing::info!(message = "fetched new forecast", observation = %obs.id);
                 }
                 Err(e) => {
                     tracing::error!(message = "failed to fetch forecast", error = %e);
