@@ -154,7 +154,7 @@ pub struct StationProperties {
     #[serde(alias = "name")]
     pub name: String,
     #[serde(alias = "timezone")]
-    pub timezone: String,
+    pub timezone: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -215,14 +215,14 @@ pub struct ObservationProperties {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Weather {
-    #[serde(alias = "intensity")]
-    pub intensity: String,
-    #[serde(alias = "modifier")]
-    pub modifier: Option<String>,
     #[serde(alias = "weather")]
     pub weather: String,
     #[serde(alias = "rawString")]
     pub raw_string: String,
+    #[serde(alias = "intensity")]
+    pub intensity: Option<String>,
+    #[serde(alias = "modifier")]
+    pub modifier: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
