@@ -1,8 +1,8 @@
-# Gman
+# nws_exporter
 
-[![build status](https://circleci.com/gh/56quarters/gman.svg?style=shield)](https://circleci.com/gh/56quarters/gman)
-[![docs.rs](https://docs.rs/gman/badge.svg)](https://docs.rs/gman/)
-[![crates.io](https://img.shields.io/crates/v/gman.svg)](https://crates.io/crates/gman/)
+[![build status](https://circleci.com/gh/56quarters/nws_exporter.svg?style=shield)](https://circleci.com/gh/56quarters/nws_exporter)
+[![docs.rs](https://docs.rs/nws_exporter/badge.svg)](https://docs.rs/nws_exporter/)
+[![crates.io](https://img.shields.io/crates/v/nws_exporter.svg)](https://crates.io/crates/nws_exporter/)
 
 Prometheus metrics exporter for api.weather.gov
 
@@ -20,7 +20,7 @@ TBD
 
 ## License
 
-Gman is available under the terms of the [GPL, version 3](LICENSE).
+nws_exporter is available under the terms of the [GPL, version 3](LICENSE).
 
 ### Contribution
 

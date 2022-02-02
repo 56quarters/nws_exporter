@@ -301,22 +301,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gman"
-version = "0.1.0"
-dependencies = [
- "clap",
- "percent-encoding",
- "prometheus",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "warp",
-]
-
-[[package]]
 name = "h2"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -692,6 +676,22 @@ checksum = "19e64526ebdee182341572e50e9ad03965aa510cd94427a4549448f285e957a1"
 dependencies = [
  "hermit-abi",
  "libc",
+]
+
+[[package]]
+name = "nws_exporter"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "percent-encoding",
+ "prometheus",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "warp",
 ]
 
 [[package]]

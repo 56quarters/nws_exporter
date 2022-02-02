@@ -1,12 +1,13 @@
 [package]
-name = "gman"
+name = "nws_exporter"
 version = "0.1.0"
 authors = ["Nick Pillitteri"]
 description = "Prometheus metrics exporter for api.weather.gov"
-homepage = "https://github.com/56quarters/gman"
-repository = "https://github.com/56quarters/gman"
+homepage = "https://github.com/56quarters/nws_exporter"
+repository = "https://github.com/56quarters/nws_exporter"
 readme = "README.md"
 license = "GPL-3.0+"
+keywords = ["nws", "metrics", "prometheus"]
 edition = "2021"
 
 [dependencies]
@@ -22,6 +23,6 @@ tracing-subscriber = "0.1.6"
 warp = "0.3.2"
 
 [lib]
-name = "gman"
-path = "src/gman/lib.rs"
+name = "nws_exporter"
+path = "src/nws_exporter/lib.rs"
 

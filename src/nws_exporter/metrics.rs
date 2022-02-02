@@ -1,4 +1,4 @@
-// Gman - Prometheus metrics exporter for api.weather.gov
+// nws_exporter - Prometheus metrics exporter for api.weather.gov
 //
 // Copyright 2022 Nick Pillitteri
 //
@@ -19,7 +19,7 @@
 use crate::client::{Measurement, Observation};
 use prometheus::{GaugeVec, Opts, Registry};
 
-const NAMESPACE: &str = "gman";
+const NAMESPACE: &str = "nws";
 const LABEL_STATION: &str = "station";
 
 #[derive(Debug)]

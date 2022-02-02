@@ -1,4 +1,4 @@
-// Gman - Prometheus metrics exporter for api.weather.gov
+// nws_exporter - Prometheus metrics exporter for api.weather.gov
 //
 // Copyright 2022 Nick Pillitteri
 //
@@ -17,9 +17,9 @@
 //
 
 use clap::Parser;
-use gman::client::{ClientError, WeatherGovClient};
-use gman::http::RequestContext;
-use gman::metrics::ForecastMetrics;
+use nws_exporter::client::{ClientError, WeatherGovClient};
+use nws_exporter::http::RequestContext;
+use nws_exporter::metrics::ForecastMetrics;
 use reqwest::Client;
 use std::error::Error;
 use std::io;
@@ -37,8 +37,8 @@ const DEFAULT_TIMEOUT_MILLIS: u64 = 5000;
 const DEFAULT_API_URL: &str = "https://api.weather.gov/";
 
 #[derive(Debug, Parser)]
-#[clap(name = "gman", version = clap::crate_version ! ())]
-struct GmanApplication {
+#[clap(name = "nws_exporter", version = clap::crate_version!())]
+struct NwsExporterApplication {
     /// NWS weather station ID to fetch forecasts for
     #[clap(long)]
     station: String,
@@ -60,7 +60,7 @@ struct GmanApplication {
     #[clap(long, default_value_t = DEFAULT_TIMEOUT_MILLIS)]
     timeout_millis: u64,
 
-    /// Address to bind to. By default, gman will bind to public address since
+    /// Address to bind to. By default, nws_exporter will bind to public address since
     /// the purpose is to expose metrics to an external system (Prometheus or another
     /// agent for ingestion)
     #[clap(long, default_value_t = DEFAULT_BIND_ADDR.into())]
@@ -69,7 +69,7 @@ struct GmanApplication {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
-    let opts = GmanApplication::parse();
+    let opts = NwsExporterApplication::parse();
     tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
             .with_max_level(opts.log_level)
@@ -112,7 +112,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
             let _ = interval.tick().await;
             match client
                 .observation(&station)
-                .instrument(tracing::span!(Level::DEBUG, "gman_observation"))
+                .instrument(tracing::span!(Level::DEBUG, "nws_observation"))
                 .await
             {
                 Ok(obs) => {
@@ -127,7 +127,7 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     });
 
     let context = Arc::new(RequestContext::new(registry));
-    let handler = gman::http::text_metrics(context);
+    let handler = nws_exporter::http::text_metrics(context);
     let (sock, server) = warp::serve(handler)
         .try_bind_with_graceful_shutdown(opts.bind, async {
             // Wait for either SIGTERM or SIGINT to shutdown

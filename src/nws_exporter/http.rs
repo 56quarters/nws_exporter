@@ -1,4 +1,4 @@
-// Gman - Prometheus metrics exporter for api.weather.gov
+// nws_exporter - Prometheus metrics exporter for api.weather.gov
 //
 // Copyright 2022 Nick Pillitteri
 //

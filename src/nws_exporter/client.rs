@@ -1,4 +1,4 @@
-// Gman - Prometheus metrics exporter for api.weather.gov
+// nws_exporter - Prometheus metrics exporter for api.weather.gov
 //
 // Copyright 2022 Nick Pillitteri
 //
@@ -56,7 +56,7 @@ pub struct WeatherGovClient {
 }
 
 impl WeatherGovClient {
-    const USER_AGENT: &'static str = "Gman Prometheus Exporter (https://github.com/56quarters/gman)";
+    const USER_AGENT: &'static str = "Gman Prometheus Exporter (https://github.com/56quarters/nws_exporter)";
     const JSON_RESPONSE: &'static str = "application/geo+json";
 
     pub fn new(client: Client, base_url: &str) -> Self {
