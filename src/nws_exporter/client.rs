@@ -26,6 +26,7 @@ use std::fmt;
 #[derive(Debug)]
 pub enum ClientError {
     Internal(reqwest::Error),
+    Initialization(String),
     InvalidStation(String),
     Unexpected(StatusCode, Url),
 }
@@ -34,6 +35,7 @@ impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Internal(e) => write!(f, "{}", e),
+            Self::Initialization(msg) => write!(f, "initialization error: {}", msg),
             Self::InvalidStation(s) => write!(f, "invalid station {}", s),
             Self::Unexpected(status, url) => write!(f, "unexpected status {} for {}", status, url),
         }
@@ -49,24 +51,42 @@ impl error::Error for ClientError {
     }
 }
 
+/// Client for fetching station metadata and forecasts using an underlying reqwest client
 #[derive(Debug)]
-pub struct WeatherGovClient {
+pub struct NwsClient {
     client: Client,
     base_url: Url,
 }
 
-impl WeatherGovClient {
-    const USER_AGENT: &'static str = "Gman Prometheus Exporter (https://github.com/56quarters/nws_exporter)";
+impl NwsClient {
+    const USER_AGENT: &'static str = "nws_exporter prometheus exporter (https://github.com/56quarters/nws_exporter)";
     const JSON_RESPONSE: &'static str = "application/geo+json";
 
-    pub fn new(client: Client, base_url: &str) -> Self {
-        WeatherGovClient {
+    /// Create a new `NwsClient` from the provided reqwest client and based URL for the
+    /// API (this will almost always be "https://api.weather.gov/" in typical use).
+    ///
+    /// # Errors
+    ///
+    /// This method will return an the `ClientError::Initialization` variant if the provided
+    /// base URL is not a valid URL.
+    pub fn new(client: Client, base_url: &str) -> Result<Self, ClientError> {
+        Ok(NwsClient {
             client,
-            // TODO(56quarters): Handle this better
-            base_url: Url::parse(base_url).unwrap(),
-        }
+            base_url: base_url
+                .parse()
+                .map_err(|e| ClientError::Initialization(format!("cannot parse {}: {}", base_url, e)))?,
+        })
     }
 
+    /// Fetch station metadata for the given station ID, returning an error if the request
+    /// failed or the response couldn't be deserialized.
+    ///
+    /// # Errors
+    ///
+    /// If the provided station ID is not valid, the `ClientError::InvalidStation` error
+    /// variant will be returned. Unexpected HTTP status codes (non-200) will result in the
+    /// `ClientError::Unexpected` error variant. Any other errors from the underlying HTTP
+    /// client will result in the `ClientError::Internal` error variant.
     pub async fn station(&self, station: &str) -> Result<Station, ClientError> {
         let station_url = self.station_url(station);
         tracing::debug!(message = "making station information request", url = %station_url);
@@ -75,6 +95,15 @@ impl WeatherGovClient {
         Ok(res.json::<Station>().await.map_err(ClientError::Internal)?)
     }
 
+    /// Fetch the most recent forecast information for the given station ID, returning an
+    /// error if the request failed or the response couldn't be deserialized.
+    ///
+    /// # Errors
+    ///
+    /// If the provided station ID is not valid, the `ClientError::InvalidStation` error
+    /// variant will be returned. Unexpected HTTP status codes (non-200) will result in the
+    /// `ClientError::Unexpected` error variant. Any other errors from the underlying HTTP
+    /// client will result in the `ClientError::Internal` error variant.
     pub async fn observation(&self, station: &str) -> Result<Observation, ClientError> {
         let request_url = self.observation_url(station);
         tracing::debug!(message = "making latest observation request", url = %request_url);

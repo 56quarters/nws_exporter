@@ -17,7 +17,7 @@
 //
 
 use clap::Parser;
-use nws_exporter::client::{ClientError, WeatherGovClient};
+use nws_exporter::client::{ClientError, NwsClient};
 use nws_exporter::http::RequestContext;
 use nws_exporter::metrics::ForecastMetrics;
 use reqwest::Client;
@@ -83,10 +83,14 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         process::exit(1)
     });
 
+    let client = NwsClient::new(http_client, &opts.api_url).unwrap_or_else(|e| {
+        tracing::error!(message = "unable to initialize NWS client", error = %e);
+        process::exit(1)
+    });
+
     // Make an initial request to fetch station information. This allows us to verify that the
     // station the user provided is valid and the API is available before starting the HTTP server
     // and running indefinitely.
-    let client = WeatherGovClient::new(http_client, &opts.api_url);
     match client.station(&opts.station).await {
         Err(ClientError::InvalidStation(station)) => {
             tracing::error!(message = "invalid station provided", station = %station);
