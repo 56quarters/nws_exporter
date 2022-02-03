@@ -8,15 +8,69 @@ Prometheus metrics exporter for api.weather.gov
 
 ## Features
 
-TBD
+`nws_exporter` fetches weather information for a particular [NWS station] using the [api.weather.gov] API and emits
+it as Prometheus metrics. Users must pick a particular station to fetch weather information from. The following
+metrics are emitted when available (not all fields are available for all stations).
+
+* `nws_elevation_meters{station=$STATION_ID}` - Elevation of the station, in meters.
+* `nws_temperature_degrees{station=$STATION_ID}` - Temperature, in degrees celsius.
+* `nws_dewpoint_degrees{station=$STATION_ID}` - Dewpoint, in degrees celsius.
+* `nws_barometric_pressure_pascals{station=$STATION_ID}` - Barometric pressure, in pascals.
+* `nws_visibility_meters{station=$STATION_ID}` - Visibility, in meters.
+* `nws_relative_humidity{station=$STATION_ID}` - Relative humidity (0-100).
+* `nws_wind_chill_degrees{station=$STATION_ID}` - Temperature with wind chill, in degrees celsius.
+
+[NWS station]: https://www.weather.gov/documentation/services-web-api#/default/obs_stations
+[api.weather.gov]: https://www.weather.gov/documentation/services-web-api
 
 ## Build
 
-TBD
+`nws_exporter` is a Rust program and must be built from source using a [Rust toolchain](https://rustup.rs/).
+
+```text
+cargo build --release
+```
 
 ## Install
 
+### Picking a station
+
 TBD
+
+### Run
+
+You can run `nws_exporter` as a Systemd service using the [provided unit file](ext/nws_exporter.service). This
+unit file  assumes that you have copied the resulting `nws_exporter` binary to `/usr/local/bin/nws_exporter`.
+
+```text
+sudo cp target/release/nws_exporter /usr/local/bin/nws_exporter
+sudo cp ext/nws_exporter.service /etc/systemd/system/nws_exporter.service
+sudo systemctl daemon-reload
+sudo systemctl enable nws_exporter.service
+sudo systemctl start nws_exporter.serivce
+```
+
+### Prometheus
+
+Prometheus metrics are exposed on port `9782` at `/metrics`. Once `nws_exporter`
+is running, configure scrapes of it by your Prometheus server. Add the host running
+`nws_exporter` as a target under the Prometheus `scrape_configs` section as described by
+the example below.
+
+```yaml
+# Sample config for Prometheus.
+
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+  external_labels:
+      monitor: 'my_prom'
+
+scrape_configs:
+  - job_name: nws_exporter
+    static_configs:
+      - targets: ['example:9782']
+```
 
 ## License
 
