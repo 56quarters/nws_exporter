@@ -64,12 +64,12 @@ global:
   scrape_interval:     15s
   evaluation_interval: 15s
   external_labels:
-      monitor: 'my_prom'
+    monitor: 'my_prom'
 
 scrape_configs:
-  - job_name: nws_exporter
-    static_configs:
-      - targets: ['example:9782']
+- job_name: nws_exporter
+  static_configs:
+  - targets: ['example:9782']
 ```
 
 ## License
