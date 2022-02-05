@@ -110,7 +110,12 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     let mut interval = tokio::time::interval(Duration::from_secs(opts.refresh_secs));
 
     tokio::spawn(async move {
-        tracing::info!(message = "forecast polling started", api_url = %opts.api_url, station = %station);
+        tracing::info!(
+            message = "forecast polling started",
+            api_url = %opts.api_url,
+            station = %station,
+            refresh_secs = opts.refresh_secs,
+        );
 
         loop {
             let _ = interval.tick().await;
