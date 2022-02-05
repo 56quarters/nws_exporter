@@ -4,6 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
+User=nobody
 ExecStart=/usr/local/bin/nws_exporter --station kbos --log-level debug
 
 CapabilityBoundingSet=
