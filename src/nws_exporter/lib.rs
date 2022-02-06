@@ -24,13 +24,14 @@
 //! it as Prometheus metrics. Users must pick a particular station to fetch weather information from. The following
 //! metrics are emitted when available (not all fields are available for all stations).
 //!
-//! * `nws_elevation_meters{station=$STATION_ID}` - Elevation of the station, in meters.
-//! * `nws_temperature_degrees{station=$STATION_ID}` - Temperature, in degrees celsius.
-//! * `nws_dewpoint_degrees{station=$STATION_ID}` - Dewpoint, in degrees celsius.
-//! * `nws_barometric_pressure_pascals{station=$STATION_ID}` - Barometric pressure, in pascals.
-//! * `nws_visibility_meters{station=$STATION_ID}` - Visibility, in meters.
-//! * `nws_relative_humidity{station=$STATION_ID}` - Relative humidity (0-100).
-//! * `nws_wind_chill_degrees{station=$STATION_ID}` - Temperature with wind chill, in degrees celsius.
+//! * `nws_station{station=$STATION, station_id=$STATION_ID, station_name=$STATION_NAME}` - Station metadata
+//! * `nws_elevation_meters{station=$STATION}` - Elevation of the station, in meters.
+//! * `nws_temperature_degrees{station=$STATION}` - Temperature, in degrees celsius.
+//! * `nws_dewpoint_degrees{station=$STATION}` - Dewpoint, in degrees celsius.
+//! * `nws_barometric_pressure_pascals{station=$STATION}` - Barometric pressure, in pascals.
+//! * `nws_visibility_meters{station=$STATION}` - Visibility, in meters.
+//! * `nws_relative_humidity{station=$STATION}` - Relative humidity (0-100).
+//! * `nws_wind_chill_degrees{station=$STATION}` - Temperature with wind chill, in degrees celsius.
 //!
 //! [NWS station]: https://www.weather.gov/documentation/services-web-api#/default/obs_stations
 //! [api.weather.gov]: https://www.weather.gov/documentation/services-web-api
