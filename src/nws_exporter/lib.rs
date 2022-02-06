@@ -39,15 +39,45 @@
 //!
 //! `nws_exporter` is a Rust program and must be built from source using a [Rust toolchain](https://rustup.rs/).
 //!
+//! ### Build from source
+//!
+//! If you want to build from the latest code in the `nws_exporter` repo, you can build using the following
+//! steps.
+//!
 //! ```text
+//! git clone git@github.com:56quarters/nws_exporter.git && cd nws_exporter
 //! cargo build --release
 //! ```
 //!
-//! ## Install
+//! ### Install via cargo
+//!
+//! After you have a Rust toolchain, you can also install the latest release directly via `cargo install`
+//!
+//! ```text
+//! cargo install nws_exporter
+//! ```
+//!
+//! ## Usage
 //!
 //! ### Picking a station
 //!
-//! TBD
+//! In order to export NWS forecast information, `nws_exporter` needs to be told which NWS station to request
+//! information for. You can get a list of the available stations in your state by using the API itself. An
+//! example of this using `curl` is below.
+//!
+//! ```text
+//! curl -sS 'https://api.weather.gov/stations?state=MA' | jq | less
+//! ```
+//!
+//! This command lists all available stations in the state of Massachusetts. The `properties.stationIdentifier`
+//! field for each station is the ID that you should use with `nws_exporter`. For example `KBOS` is the ID for
+//! the station at Logan Airport in Boston.
+//!
+//! You can then run `nws_exporter` for this station as demonstrated below.
+//!
+//! ```text
+//! ./nws_exporter --station KBOS
+//! ```
 //!
 //! ### Run
 //!
