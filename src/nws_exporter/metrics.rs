@@ -27,7 +27,7 @@ const LABEL_STATION_NAME: &str = "station_name";
 /// Holder for metrics that can be set from an `Observation` response.
 ///
 /// All metrics are created and registered upon call to `ForecastMetrics::new()`. Metrics
-/// all shared the prefix "nws_" and have a "station" label that will be set to the full
+/// all share the prefix "nws_" and have a "station" label that will be set to the full
 /// ID of the station (e.g. `{station="https://api.weather.gov/stations/KBOS"}`)
 #[derive(Debug)]
 pub struct ForecastMetrics {

@@ -91,7 +91,11 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Make an initial request to fetch station information. This allows us to verify that the
     // station the user provided is valid and the API is available before starting the HTTP server
     // and running indefinitely.
-    let station = match client.station(&opts.station).await {
+    let station = match client
+        .station(&opts.station)
+        .instrument(tracing::span!(Level::DEBUG, "nws_station"))
+        .await
+    {
         Err(e) => {
             tracing::error!(message = "failed to fetch initial station information", error = %e);
             process::exit(1);
