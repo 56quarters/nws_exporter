@@ -50,12 +50,12 @@ pub fn text_metrics(context: Arc<RequestContext>) -> impl Filter<Extract = impl 
 
 /// Prometheus metrics that can be rendered in text exposition format.
 #[derive(Debug)]
-pub struct GatheredMetrics {
+struct GatheredMetrics {
     metrics: Vec<MetricFamily>,
 }
 
 impl GatheredMetrics {
-    pub fn new(metrics: Vec<MetricFamily>) -> Self {
+    fn new(metrics: Vec<MetricFamily>) -> Self {
         GatheredMetrics { metrics }
     }
 }

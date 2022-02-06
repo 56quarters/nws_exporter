@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::error;
 use std::fmt;
 
+/// Error resulting from setup of or calls to an `NwsClient` instance.
 #[derive(Debug)]
 pub enum ClientError {
     Internal(reqwest::Error),

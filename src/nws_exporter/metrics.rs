@@ -22,6 +22,11 @@ use prometheus::{GaugeVec, Opts, Registry};
 const NAMESPACE: &str = "nws";
 const LABEL_STATION: &str = "station";
 
+/// Holder for metrics that can be set from an `Observation` response.
+///
+/// All metrics are created and registered upon call to `ForecastMetrics::new()`. Metrics
+/// all shared the prefix "nws_" and have a "station" label that will be set to the full
+/// ID of the station (e.g. `{station="https://api.weather.gov/stations/KBOS"}`)
 #[derive(Debug)]
 pub struct ForecastMetrics {
     elevation: GaugeVec,
@@ -34,6 +39,11 @@ pub struct ForecastMetrics {
 }
 
 impl ForecastMetrics {
+    /// Create a new `ForecastMetrics` and register each metric with the provided `Registry`.
+    ///
+    /// # Panics
+    ///
+    /// If any metric cannot be created or registered, this method will panic.
     pub fn new(reg: &Registry) -> Self {
         let elevation = GaugeVec::new(
             Opts::new("elevation_meters", "Elevation in meters").namespace(NAMESPACE),
@@ -96,6 +106,10 @@ impl ForecastMetrics {
         }
     }
 
+    /// Set metrics from the provided forecast if the relevant value exists.
+    ///
+    /// If the forecast doesn't contain a value for a particular metric, the metric will
+    /// not be updated.
     pub fn observe(&self, obs: &Observation) {
         let station = &obs.properties.station;
         self.set_from_measurement(station, &self.elevation, &obs.properties.elevation);
