@@ -16,11 +16,13 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-use crate::client::{Measurement, Observation};
+use crate::client::{Measurement, Observation, Station};
 use prometheus::{GaugeVec, Opts, Registry};
 
 const NAMESPACE: &str = "nws";
 const LABEL_STATION: &str = "station";
+const LABEL_STATION_ID: &str = "station_id";
+const LABEL_STATION_NAME: &str = "station_name";
 
 /// Holder for metrics that can be set from an `Observation` response.
 ///
@@ -29,6 +31,7 @@ const LABEL_STATION: &str = "station";
 /// ID of the station (e.g. `{station="https://api.weather.gov/stations/KBOS"}`)
 #[derive(Debug)]
 pub struct ForecastMetrics {
+    station: GaugeVec,
     elevation: GaugeVec,
     temperature: GaugeVec,
     dewpoint: GaugeVec,
@@ -45,6 +48,12 @@ impl ForecastMetrics {
     ///
     /// If any metric cannot be created or registered, this method will panic.
     pub fn new(reg: &Registry) -> Self {
+        let station = GaugeVec::new(
+            Opts::new("station", "Station metadata").namespace(NAMESPACE),
+            &[LABEL_STATION, LABEL_STATION_ID, LABEL_STATION_NAME],
+        )
+        .unwrap();
+
         let elevation = GaugeVec::new(
             Opts::new("elevation_meters", "Elevation in meters").namespace(NAMESPACE),
             &[LABEL_STATION],
@@ -87,6 +96,7 @@ impl ForecastMetrics {
         )
         .unwrap();
 
+        reg.register(Box::new(station.clone())).unwrap();
         reg.register(Box::new(elevation.clone())).unwrap();
         reg.register(Box::new(temperature.clone())).unwrap();
         reg.register(Box::new(dewpoint.clone())).unwrap();
@@ -96,6 +106,7 @@ impl ForecastMetrics {
         reg.register(Box::new(wind_chill.clone())).unwrap();
 
         Self {
+            station,
             elevation,
             temperature,
             dewpoint,
@@ -106,11 +117,22 @@ impl ForecastMetrics {
         }
     }
 
+    /// Set station metadata as labels on a single gauge with values from the provided station
+    pub fn station(&self, station: &Station) {
+        self.station
+            .with_label_values(&[
+                &station.properties.id,
+                &station.properties.station_identifier,
+                &station.properties.name,
+            ])
+            .set(1.0);
+    }
+
     /// Set metrics from the provided forecast if the relevant value exists.
     ///
     /// If the forecast doesn't contain a value for a particular metric, the metric will
     /// not be updated.
-    pub fn observe(&self, obs: &Observation) {
+    pub fn observation(&self, obs: &Observation) {
         let station = &obs.properties.station;
         self.set_from_measurement(station, &self.elevation, &obs.properties.elevation);
         self.set_from_measurement(station, &self.temperature, &obs.properties.temperature);

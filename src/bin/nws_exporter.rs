@@ -17,7 +17,7 @@
 //
 
 use clap::Parser;
-use nws_exporter::client::{ClientError, NwsClient};
+use nws_exporter::client::NwsClient;
 use nws_exporter::http::RequestContext;
 use nws_exporter::metrics::ForecastMetrics;
 use reqwest::Client;
@@ -91,41 +91,41 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
     // Make an initial request to fetch station information. This allows us to verify that the
     // station the user provided is valid and the API is available before starting the HTTP server
     // and running indefinitely.
-    match client.station(&opts.station).await {
-        Err(ClientError::InvalidStation(station)) => {
-            tracing::error!(message = "invalid station provided", station = %station);
-            process::exit(1)
-        }
+    let station = match client.station(&opts.station).await {
         Err(e) => {
-            tracing::warn!(message = "failed to fetch initial station information", error = %e);
+            tracing::error!(message = "failed to fetch initial station information", error = %e);
+            process::exit(1);
         }
         Ok(s) => {
             tracing::debug!(message = "verified station information", station = ?s);
+            s
         }
-    }
+    };
 
-    let station = opts.station.clone();
     let registry = prometheus::default_registry().clone();
     let metrics = ForecastMetrics::new(&registry);
     let mut interval = tokio::time::interval(Duration::from_secs(opts.refresh_secs));
 
     tokio::spawn(async move {
+        metrics.station(&station);
+
+        let station_id = &station.properties.station_identifier;
         tracing::info!(
             message = "forecast polling started",
             api_url = %opts.api_url,
-            station = %station,
+            station = %station_id,
             refresh_secs = opts.refresh_secs,
         );
 
         loop {
             let _ = interval.tick().await;
             match client
-                .observation(&station)
+                .observation(station_id)
                 .instrument(tracing::span!(Level::DEBUG, "nws_observation"))
                 .await
             {
                 Ok(obs) => {
-                    metrics.observe(&obs);
+                    metrics.observation(&obs);
                     tracing::info!(message = "fetched new forecast", observation = %obs.id);
                 }
                 Err(e) => {
