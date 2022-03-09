@@ -77,7 +77,7 @@
 //! You can then run `nws_exporter` for this station as demonstrated below.
 //!
 //! ```text
-//! ./nws_exporter --station KBOS
+//! ./nws_exporter KBOS
 //! ```
 //!
 //! ### Run
@@ -89,7 +89,7 @@
 //! ```text
 //! sudo cp target/release/nws_exporter /usr/local/bin/nws_exporter
 //! sudo cp ext/nws_exporter.service /etc/systemd/system/nws_exporter.service
-//! sudo sed -i 's/--station KBOS/--station YOUR_STATION/' /etc/systemd/system/nws_exporter.service
+//! sudo sed -i 's/KBOS/YOUR_STATION/' /etc/systemd/system/nws_exporter.service
 //! sudo systemctl daemon-reload
 //! sudo systemctl enable nws_exporter.service
 //! sudo systemctl start nws_exporter.serivce
