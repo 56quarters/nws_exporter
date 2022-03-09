@@ -17,7 +17,7 @@
 //
 
 use clap::Parser;
-use nws_exporter::client::NwsClient;
+use nws_exporter::client::{ClientError, NwsClient};
 use nws_exporter::http::RequestContext;
 use nws_exporter::metrics::ForecastMetrics;
 use reqwest::Client;
@@ -36,12 +36,15 @@ const DEFAULT_REFERSH_SECS: u64 = 300;
 const DEFAULT_TIMEOUT_MILLIS: u64 = 5000;
 const DEFAULT_API_URL: &str = "https://api.weather.gov/";
 
+/// Export National Weather Service forecasts as Prometheus metrics
 #[derive(Debug, Parser)]
 #[clap(name = "nws_exporter", version = clap::crate_version!())]
 struct NwsExporterApplication {
-    /// NWS weather station ID to fetch forecasts for
-    #[clap(long)]
-    station: String,
+    /// NWS weather station ID to fetch forecasts for. Must be specified at least once and
+    /// may be used multiple times (separated by spaces) to fetch forecasts for multiple NWS
+    /// stations
+    #[clap(required = true)]
+    station: Vec<String>,
 
     /// Base URL for the Weather.gov API
     #[clap(long, default_value_t = DEFAULT_API_URL.into())]
@@ -52,11 +55,11 @@ struct NwsExporterApplication {
     #[clap(long, default_value_t = DEFAULT_LOG_LEVEL)]
     log_level: Level,
 
-    /// Fetch weather forecasts from the Weather.gov API at this interval, in seconds.
+    /// Fetch weather forecasts from the Weather.gov API at this interval, in seconds
     #[clap(long, default_value_t = DEFAULT_REFERSH_SECS)]
     refresh_secs: u64,
 
-    /// Timeout for fetching weather forecasts from the Weather.gov API, in milliseconds.
+    /// Timeout for fetching weather forecasts from the Weather.gov API, in milliseconds
     #[clap(long, default_value_t = DEFAULT_TIMEOUT_MILLIS)]
     timeout_millis: u64,
 
@@ -88,56 +91,19 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         process::exit(1)
     });
 
+    let registry = prometheus::default_registry().clone();
+    let metrics = ForecastMetrics::new(&registry);
+    let update = UpdateTask::new(opts.station, metrics, client, Duration::from_secs(opts.refresh_secs));
+
     // Make an initial request to fetch station information. This allows us to verify that the
     // station the user provided is valid and the API is available before starting the HTTP server
     // and running indefinitely.
-    let station = match client
-        .station(&opts.station)
-        .instrument(tracing::span!(Level::DEBUG, "nws_station"))
-        .await
-    {
-        Err(e) => {
-            tracing::error!(message = "failed to fetch initial station information", error = %e);
-            process::exit(1);
-        }
-        Ok(s) => {
-            tracing::debug!(message = "verified station information", station = ?s);
-            s
-        }
-    };
+    if let Err(e) = update.initialize().await {
+        tracing::error!(message = "failed to fetch initial station information", error = %e);
+        process::exit(1);
+    }
 
-    let registry = prometheus::default_registry().clone();
-    let metrics = ForecastMetrics::new(&registry);
-    let mut interval = tokio::time::interval(Duration::from_secs(opts.refresh_secs));
-
-    tokio::spawn(async move {
-        metrics.station(&station);
-
-        let station_id = &station.properties.station_identifier;
-        tracing::info!(
-            message = "forecast polling started",
-            api_url = %opts.api_url,
-            station = %station_id,
-            refresh_secs = opts.refresh_secs,
-        );
-
-        loop {
-            let _ = interval.tick().await;
-            match client
-                .observation(station_id)
-                .instrument(tracing::span!(Level::DEBUG, "nws_observation"))
-                .await
-            {
-                Ok(obs) => {
-                    metrics.observation(&obs);
-                    tracing::info!(message = "fetched new forecast", observation = %obs.id);
-                }
-                Err(e) => {
-                    tracing::error!(message = "failed to fetch forecast", error = %e);
-                }
-            }
-        }
-    });
+    tokio::spawn(update.run());
 
     let context = Arc::new(RequestContext::new(registry));
     let handler = nws_exporter::http::text_metrics(context);
@@ -171,4 +137,66 @@ async fn sigterm() -> io::Result<()> {
 async fn sigint() -> io::Result<()> {
     unix::signal(SignalKind::interrupt())?.recv().await;
     Ok(())
+}
+
+/// Task for periodically updating forecast metrics for multiple stations
+///
+/// Perform one-time initialization of station metadata metrics and periodically
+/// update the forecast metrics for a list of stations until this exporter is
+/// stopped.
+struct UpdateTask {
+    stations: Vec<String>,
+    metrics: ForecastMetrics,
+    client: NwsClient,
+    interval: Duration,
+}
+
+impl UpdateTask {
+    fn new(stations: Vec<String>, metrics: ForecastMetrics, client: NwsClient, interval: Duration) -> Self {
+        Self {
+            stations,
+            metrics,
+            client,
+            interval,
+        }
+    }
+
+    /// Set station metadata metrics or return an error if station metadata could not be fetched
+    async fn initialize(&self) -> Result<(), ClientError> {
+        for id in self.stations.iter() {
+            let station = self
+                .client
+                .station(id)
+                .instrument(tracing::span!(Level::DEBUG, "nws_station"))
+                .await?;
+            self.metrics.station(&station);
+        }
+
+        Ok(())
+    }
+
+    /// Update station forecast metrics for all stations in a loop forever, logging any errors
+    async fn run(self) -> ! {
+        let mut interval = tokio::time::interval(self.interval);
+
+        loop {
+            let _ = interval.tick().await;
+            for id in self.stations.iter() {
+                match self
+                    .client
+                    .observation(id)
+                    .instrument(tracing::span!(Level::DEBUG, "nws_observation"))
+                    .await
+                {
+                    Ok(obs) => {
+                        self.metrics.observation(&obs);
+                        tracing::info!(message = "fetched new forecast", station_id = %id, observation = %obs.id);
+                    }
+                    Err(e) => {
+                        tracing::error!(message = "failed to fetch forecast", station_id = %id, error = %e);
+                    }
+                }
+            }
+        }
+    }
 }

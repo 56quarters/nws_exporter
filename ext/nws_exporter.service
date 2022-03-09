@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=nobody
-ExecStart=/usr/local/bin/nws_exporter --station KBOS --log-level debug
+ExecStart=/usr/local/bin/nws_exporter --log-level=debug KBOS
 
 CapabilityBoundingSet=
 NoNewPrivileges=yes
