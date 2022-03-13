@@ -60,7 +60,7 @@ pub struct NwsClient {
 }
 
 impl NwsClient {
-    const USER_AGENT: &'static str = "nws_exporter prometheus exporter (https://github.com/56quarters/nws_exporter)";
+    const USER_AGENT: &'static str = "nws_exporter/0.4.0 (https://github.com/56quarters/nws_exporter)";
     const JSON_RESPONSE: &'static str = "application/geo+json";
 
     /// Create a new `NwsClient` from the provided reqwest client and based URL for the
