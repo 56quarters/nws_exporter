@@ -59,7 +59,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
   "id": null,
-  "iteration": 1647204358336,
+  "iteration": 1647447261138,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -197,6 +197,8 @@
             }
           },
           "mappings": [],
+          "max": 100,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -444,6 +446,6 @@
   "timezone": "",
   "title": "NWS Station",
   "uid": "TbgBKgggz",
-  "version": 21,
+  "version": 22,
   "weekStart": ""
 }
