@@ -19,7 +19,6 @@
 use crate::client::{Measurement, Observation, Station};
 use prometheus::{GaugeVec, Opts, Registry};
 
-const NAMESPACE: &str = "nws";
 const LABEL_STATION: &str = "station";
 const LABEL_STATION_ID: &str = "station_id";
 const LABEL_STATION_NAME: &str = "station_name";
@@ -49,49 +48,42 @@ impl ForecastMetrics {
     /// If any metric cannot be created or registered, this method will panic.
     pub fn new(reg: &Registry) -> Self {
         let station = GaugeVec::new(
-            Opts::new("station", "Station metadata").namespace(NAMESPACE),
+            Opts::new("nws_station", "Station metadata"),
             &[LABEL_STATION, LABEL_STATION_ID, LABEL_STATION_NAME],
         )
         .unwrap();
-
         let elevation = GaugeVec::new(
-            Opts::new("elevation_meters", "Elevation in meters").namespace(NAMESPACE),
+            Opts::new("nws_elevation_meters", "Elevation in meters"),
             &[LABEL_STATION],
         )
         .unwrap();
-
         let temperature = GaugeVec::new(
-            Opts::new("temperature_degrees", "Temperature in celsius").namespace(NAMESPACE),
+            Opts::new("nws_temperature_degrees", "Temperature in celsius"),
             &[LABEL_STATION],
         )
         .unwrap();
-
         let dewpoint = GaugeVec::new(
-            Opts::new("dewpoint_degrees", "Dewpoint in celsius").namespace(NAMESPACE),
+            Opts::new("nws_dewpoint_degrees", "Dewpoint in celsius"),
             &[LABEL_STATION],
         )
         .unwrap();
-
         let barometric_pressure = GaugeVec::new(
-            Opts::new("barometric_pressure_pascals", "Barometric pressure in pascals").namespace(NAMESPACE),
+            Opts::new("nws_barometric_pressure_pascals", "Barometric pressure in pascals"),
             &[LABEL_STATION],
         )
         .unwrap();
-
         let visibility = GaugeVec::new(
-            Opts::new("visibility_meters", "Visibility in meters").namespace(NAMESPACE),
+            Opts::new("nws_visibility_meters", "Visibility in meters"),
             &[LABEL_STATION],
         )
         .unwrap();
-
         let relative_humidity = GaugeVec::new(
-            Opts::new("relative_humidity", "Relative humidity (0-100)").namespace(NAMESPACE),
+            Opts::new("nws_relative_humidity", "Relative humidity (0-100)"),
             &[LABEL_STATION],
         )
         .unwrap();
-
         let wind_chill = GaugeVec::new(
-            Opts::new("wind_chill_degrees", "Temperature with wind chill in celsius").namespace(NAMESPACE),
+            Opts::new("nws_wind_chill_degrees", "Temperature with wind chill in celsius"),
             &[LABEL_STATION],
         )
         .unwrap();
