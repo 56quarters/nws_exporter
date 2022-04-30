@@ -1,6 +1,6 @@
 # nws_exporter
 
-[![build status](https://circleci.com/gh/56quarters/nws_exporter.svg?style=shield)](https://circleci.com/gh/56quarters/nws_exporter)
+![build status](https://github.com/56quarters/nws_exporter/actions/workflows/rust.yml/badge.svg)
 [![docs.rs](https://docs.rs/nws_exporter/badge.svg)](https://docs.rs/nws_exporter/)
 [![crates.io](https://img.shields.io/crates/v/nws_exporter.svg)](https://crates.io/crates/nws_exporter/)
 
