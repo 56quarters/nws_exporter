@@ -65,7 +65,7 @@ the station at Logan Airport in Boston.
 You can then run `nws_exporter` for this station as demonstrated below.
 
 ```text
-./nws_exporterg KBOS
+./nws_exporter KBOS
 ```
 
 ### Run
