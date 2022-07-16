@@ -17,85 +17,87 @@
 //
 
 use crate::client::{Measurement, Observation, Station};
-use prometheus::{GaugeVec, Opts, Registry};
+use prometheus_client::encoding::text::Encode;
+use prometheus_client::metrics::family::Family;
+use prometheus_client::metrics::gauge::Gauge;
+use prometheus_client::registry::Registry;
 
-const LABEL_STATION: &str = "station";
-const LABEL_STATION_ID: &str = "station_id";
-const LABEL_STATION_NAME: &str = "station_name";
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Encode)]
+struct Labels {
+    station: String,
+}
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq, Encode)]
+struct InfoLabels {
+    station: String,
+    station_id: String,
+    station_name: String,
+}
 
 /// Holder for metrics that can be set from an `Observation` response.
 ///
 /// All metrics are created and registered upon call to `ForecastMetrics::new()`. Metrics
 /// all share the prefix "nws_" and have a "station" label that will be set to the full
 /// ID of the station (e.g. `{station="https://api.weather.gov/stations/KBOS"}`)
-#[derive(Debug)]
 pub struct ForecastMetrics {
-    station: GaugeVec,
-    elevation: GaugeVec,
-    temperature: GaugeVec,
-    dewpoint: GaugeVec,
-    barometric_pressure: GaugeVec,
-    visibility: GaugeVec,
-    relative_humidity: GaugeVec,
-    wind_chill: GaugeVec,
+    station: Family<InfoLabels, Gauge<f64>>,
+    elevation: Family<Labels, Gauge<f64>>,
+    temperature: Family<Labels, Gauge<f64>>,
+    dewpoint: Family<Labels, Gauge<f64>>,
+    barometric_pressure: Family<Labels, Gauge<f64>>,
+    visibility: Family<Labels, Gauge<f64>>,
+    relative_humidity: Family<Labels, Gauge<f64>>,
+    wind_chill: Family<Labels, Gauge<f64>>,
 }
 
 impl ForecastMetrics {
     /// Create a new `ForecastMetrics` and register each metric with the provided `Registry`.
-    ///
-    /// # Panics
-    ///
-    /// If any metric cannot be created or registered, this method will panic.
-    pub fn new(reg: &Registry) -> Self {
-        let station = GaugeVec::new(
-            Opts::new("nws_station", "Station metadata"),
-            &[LABEL_STATION, LABEL_STATION_ID, LABEL_STATION_NAME],
-        )
-        .unwrap();
-        let elevation = GaugeVec::new(
-            Opts::new("nws_elevation_meters", "Elevation in meters"),
-            &[LABEL_STATION],
-        )
-        .unwrap();
-        let temperature = GaugeVec::new(
-            Opts::new("nws_temperature_degrees", "Temperature in celsius"),
-            &[LABEL_STATION],
-        )
-        .unwrap();
-        let dewpoint = GaugeVec::new(
-            Opts::new("nws_dewpoint_degrees", "Dewpoint in celsius"),
-            &[LABEL_STATION],
-        )
-        .unwrap();
-        let barometric_pressure = GaugeVec::new(
-            Opts::new("nws_barometric_pressure_pascals", "Barometric pressure in pascals"),
-            &[LABEL_STATION],
-        )
-        .unwrap();
-        let visibility = GaugeVec::new(
-            Opts::new("nws_visibility_meters", "Visibility in meters"),
-            &[LABEL_STATION],
-        )
-        .unwrap();
-        let relative_humidity = GaugeVec::new(
-            Opts::new("nws_relative_humidity", "Relative humidity (0-100)"),
-            &[LABEL_STATION],
-        )
-        .unwrap();
-        let wind_chill = GaugeVec::new(
-            Opts::new("nws_wind_chill_degrees", "Temperature with wind chill in celsius"),
-            &[LABEL_STATION],
-        )
-        .unwrap();
+    pub fn new(reg: &mut Registry) -> Self {
+        let station = Family::<InfoLabels, Gauge<f64>>::default();
+        let elevation = Family::<Labels, Gauge<f64>>::default();
+        let temperature = Family::<Labels, Gauge<f64>>::default();
+        let dewpoint = Family::<Labels, Gauge<f64>>::default();
+        let barometric_pressure = Family::<Labels, Gauge<f64>>::default();
+        let visibility = Family::<Labels, Gauge<f64>>::default();
+        let relative_humidity = Family::<Labels, Gauge<f64>>::default();
+        let wind_chill = Family::<Labels, Gauge<f64>>::default();
 
-        reg.register(Box::new(station.clone())).unwrap();
-        reg.register(Box::new(elevation.clone())).unwrap();
-        reg.register(Box::new(temperature.clone())).unwrap();
-        reg.register(Box::new(dewpoint.clone())).unwrap();
-        reg.register(Box::new(barometric_pressure.clone())).unwrap();
-        reg.register(Box::new(visibility.clone())).unwrap();
-        reg.register(Box::new(relative_humidity.clone())).unwrap();
-        reg.register(Box::new(wind_chill.clone())).unwrap();
+        reg.register("nws_station", "Station metadata", Box::new(station.clone()));
+        reg.register(
+            "nws_elevation_meters",
+            "Elevation in meters",
+            Box::new(elevation.clone()),
+        );
+        reg.register(
+            "nws_temperature_degrees",
+            "Temperature in celsius",
+            Box::new(temperature.clone()),
+        );
+        reg.register(
+            "nws_dewpoint_degrees",
+            "Dewpoint in celsius",
+            Box::new(dewpoint.clone()),
+        );
+        reg.register(
+            "nws_barometric_pressure_pascals",
+            "Barometric pressure in pascals",
+            Box::new(barometric_pressure.clone()),
+        );
+        reg.register(
+            "nws_visibility_meters",
+            "Visibility in meters",
+            Box::new(visibility.clone()),
+        );
+        reg.register(
+            "nws_relative_humidity",
+            "Relative humidity (0-100)",
+            Box::new(relative_humidity.clone()),
+        );
+        reg.register(
+            "nws_wind_chill_degrees",
+            "Temperature with wind chill in celsius",
+            Box::new(wind_chill.clone()),
+        );
 
         Self {
             station,
@@ -111,13 +113,13 @@ impl ForecastMetrics {
 
     /// Set station metadata as labels on a single gauge with values from the provided station
     pub fn station(&self, station: &Station) {
-        self.station
-            .with_label_values(&[
-                &station.properties.id,
-                &station.properties.station_identifier,
-                &station.properties.name,
-            ])
-            .set(1.0);
+        let labels = InfoLabels {
+            station: station.properties.id.clone(),
+            station_id: station.properties.station_identifier.clone(),
+            station_name: station.properties.name.clone(),
+        };
+
+        self.station.get_or_create(&labels).set(1.0);
     }
 
     /// Set metrics from the provided forecast if the relevant value exists.
@@ -125,19 +127,21 @@ impl ForecastMetrics {
     /// If the forecast doesn't contain a value for a particular metric, the metric will
     /// not be updated.
     pub fn observation(&self, obs: &Observation) {
-        let station = &obs.properties.station;
-        self.set_from_measurement(station, &self.elevation, &obs.properties.elevation);
-        self.set_from_measurement(station, &self.temperature, &obs.properties.temperature);
-        self.set_from_measurement(station, &self.dewpoint, &obs.properties.dewpoint);
-        self.set_from_measurement(station, &self.barometric_pressure, &obs.properties.barometric_pressure);
-        self.set_from_measurement(station, &self.visibility, &obs.properties.visibility);
-        self.set_from_measurement(station, &self.relative_humidity, &obs.properties.relative_humidity);
-        self.set_from_measurement(station, &self.wind_chill, &obs.properties.wind_chill);
+        let labels = Labels {
+            station: obs.properties.station.clone(),
+        };
+        self.set_from_measurement(&labels, &self.elevation, &obs.properties.elevation);
+        self.set_from_measurement(&labels, &self.temperature, &obs.properties.temperature);
+        self.set_from_measurement(&labels, &self.dewpoint, &obs.properties.dewpoint);
+        self.set_from_measurement(&labels, &self.barometric_pressure, &obs.properties.barometric_pressure);
+        self.set_from_measurement(&labels, &self.visibility, &obs.properties.visibility);
+        self.set_from_measurement(&labels, &self.relative_humidity, &obs.properties.relative_humidity);
+        self.set_from_measurement(&labels, &self.wind_chill, &obs.properties.wind_chill);
     }
 
-    fn set_from_measurement(&self, station: &str, gauge: &GaugeVec, measurement: &Measurement) {
+    fn set_from_measurement(&self, labels: &Labels, gauge: &Family<Labels, Gauge<f64>>, measurement: &Measurement) {
         if let Some(v) = measurement.value {
-            gauge.with_label_values(&[station]).set(v);
+            gauge.get_or_create(labels).set(v);
         }
     }
 }

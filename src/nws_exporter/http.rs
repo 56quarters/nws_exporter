@@ -16,16 +16,17 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-use prometheus::proto::MetricFamily;
-use prometheus::{Encoder, Registry, TextEncoder, TEXT_FORMAT};
+use prometheus_client::encoding::text;
+use prometheus_client::registry::Registry;
 use std::sync::Arc;
 use warp::http::header::CONTENT_TYPE;
 use warp::http::{HeaderValue, StatusCode};
 use warp::reply::Response;
 use warp::{Filter, Rejection, Reply};
 
+const TEXT_FORMAT: &str = "application/openmetrics-text; version=1.0.0; charset=utf-8";
+
 /// Global stated shared between all HTTP requests via Arc.
-#[derive(Debug)]
 pub struct RequestContext {
     registry: Registry,
 }
@@ -43,34 +44,11 @@ impl RequestContext {
 pub fn text_metrics(context: Arc<RequestContext>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path("metrics").and(warp::filters::method::get()).map(move || {
         let context = context.clone();
-        let metrics = context.registry.gather();
-        GatheredMetrics::new(metrics)
-    })
-}
-
-/// Prometheus metrics that can be rendered in text exposition format.
-#[derive(Debug)]
-struct GatheredMetrics {
-    metrics: Vec<MetricFamily>,
-}
-
-impl GatheredMetrics {
-    fn new(metrics: Vec<MetricFamily>) -> Self {
-        GatheredMetrics { metrics }
-    }
-}
-
-impl Reply for GatheredMetrics {
-    fn into_response(self) -> Response {
         let mut buf = Vec::new();
-        let encoder = TextEncoder::new();
 
-        match encoder.encode(&self.metrics, &mut buf) {
+        match text::encode(&mut buf, &context.registry) {
             Ok(_) => {
-                tracing::debug!(
-                    message = "encoded prometheus metrics to text format",
-                    num_metrics = self.metrics.len()
-                );
+                tracing::debug!(message = "encoded prometheus metrics to text format",);
                 let mut res = Response::new(buf.into());
                 res.headers_mut()
                     .insert(CONTENT_TYPE, HeaderValue::from_static(TEXT_FORMAT));
@@ -81,5 +59,5 @@ impl Reply for GatheredMetrics {
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         }
-    }
+    })
 }

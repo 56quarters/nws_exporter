@@ -93,7 +93,7 @@ impl NwsClient {
         tracing::debug!(message = "making station information request", url = %station_url);
 
         let res = self.make_request(station, station_url).await?;
-        Ok(res.json::<Station>().await.map_err(ClientError::Internal)?)
+        res.json::<Station>().await.map_err(ClientError::Internal)
     }
 
     /// Fetch the most recent forecast information for the given station ID, returning an
@@ -110,7 +110,7 @@ impl NwsClient {
         tracing::debug!(message = "making latest observation request", url = %request_url);
 
         let res = self.make_request(station, request_url).await?;
-        Ok(res.json::<Observation>().await.map_err(ClientError::Internal)?)
+        res.json::<Observation>().await.map_err(ClientError::Internal)
     }
 
     async fn make_request<S: Into<String>>(&self, station: S, url: Url) -> Result<Response, ClientError> {
