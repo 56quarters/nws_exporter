@@ -20,6 +20,7 @@ use clap::Parser;
 use nws_exporter::client::{ClientError, NwsClient};
 use nws_exporter::http::RequestContext;
 use nws_exporter::metrics::ForecastMetrics;
+use prometheus_client::registry::Registry;
 use reqwest::Client;
 use std::error::Error;
 use std::io;
@@ -91,8 +92,8 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
         process::exit(1)
     });
 
-    let registry = prometheus::default_registry().clone();
-    let metrics = ForecastMetrics::new(&registry);
+    let mut registry = <Registry>::default();
+    let metrics = ForecastMetrics::new(&mut registry);
     let update = UpdateTask::new(opts.station, metrics, client, Duration::from_secs(opts.refresh_secs));
 
     // Make an initial request to fetch station information. This allows us to verify that the
