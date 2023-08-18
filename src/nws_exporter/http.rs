@@ -44,7 +44,7 @@ impl RequestContext {
 pub fn text_metrics(context: Arc<RequestContext>) -> impl Filter<Extract = impl Reply, Error = Rejection> + Clone {
     warp::path("metrics").and(warp::filters::method::get()).map(move || {
         let context = context.clone();
-        let mut buf = Vec::new();
+        let mut buf = String::new();
 
         match text::encode(&mut buf, &context.registry) {
             Ok(_) => {
