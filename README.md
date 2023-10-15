@@ -24,26 +24,57 @@ metrics are emitted when available (not all fields are available for all station
 [NWS station]: https://www.weather.gov/documentation/services-web-api#/default/obs_stations
 [api.weather.gov]: https://www.weather.gov/documentation/services-web-api
 
-## Build
+## Install
 
-`nws_exporter` is a Rust program and must be built from source using a [Rust toolchain](https://rustup.rs/).
+There are multiple ways to install `nws_exporter` listed below.
 
-### Build from source
+### Binaries
 
-If you want to build from the latest code in the `nws_exporter` repo, you can build using the following
-steps.
+Binaries are published for GNU/Linux (x86_64), Windows (x86_64), and MacOS (x86_64 and aarch64)
+for [each release](https://github.com/56quarters/nws_exporter/releases).
 
-```text
-git clone git@github.com:56quarters/nws_exporter.git && cd nws_exporter
-cargo build --release
+### Docker
+
+Docker images for GNU/Linux (amd64) are published for [each release](https://hub.docker.com/r/56quarters/nws_exporter).
+
+### Cargo
+
+`nws_exporter` along with its dependencies can be downloaded and built from source using the
+Rust `cargo` tool. Note that this requires you have a Rust toolchain installed.
+
+To install:
+
+```
+cargo install nws_exporter
 ```
 
-### Install via cargo
+To uninstall:
 
-After you have a Rust toolchain, you can also install the latest release directly via `cargo install`
+```
+cargo uninstall nws_exporter
+```
 
-```text
-cargo install nws_exporter
+### Source
+
+`nws_exporter` along with its dependencies can be built from the latest sources on Github using
+the Rust `cargo` tool. Note that this requires you have Git and a Rust toolchain installed.
+
+Get the sources:
+
+```
+git clone https://github.com/56quarters/nws_exporter.git && cd nws_exporter
+```
+
+Install from local sources:
+
+```
+cargo install --path .
+```
+
+To uninstall:
+
+```
+cargo uninstall nws_exporter
 ```
 
 ## Usage
