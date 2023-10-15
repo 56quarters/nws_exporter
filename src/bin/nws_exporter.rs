@@ -16,9 +16,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
+use axum::routing::get;
+use axum::Router;
 use clap::Parser;
 use nws_exporter::client::{ClientError, NwsClient};
-use nws_exporter::http::RequestContext;
+use nws_exporter::http::RequestState;
 use nws_exporter::metrics::ForecastMetrics;
 use prometheus_client::registry::Registry;
 use reqwest::Client;
@@ -28,7 +30,7 @@ use std::net::SocketAddr;
 use std::process;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::signal::unix::{self, SignalKind};
+use tower_http::trace::TraceLayer;
 use tracing::{Instrument, Level};
 
 const DEFAULT_LOG_LEVEL: Level = Level::INFO;
@@ -106,38 +108,50 @@ async fn main() -> Result<(), Box<dyn Error + Send + Sync>> {
 
     tokio::spawn(update.run());
 
-    let context = Arc::new(RequestContext::new(registry));
-    let handler = nws_exporter::http::text_metrics(context);
-    let (sock, server) = warp::serve(handler)
-        .try_bind_with_graceful_shutdown(opts.bind, async {
-            // Wait for either SIGTERM or SIGINT to shutdown
-            tokio::select! {
-                _ = sigterm() => {}
-                _ = sigint() => {}
-            }
+    let state = Arc::new(RequestState { registry });
+    let app = Router::new()
+        .route("/metrics", get(nws_exporter::http::text_metrics_handler))
+        .layer(TraceLayer::new_for_http())
+        .with_state(state.clone());
+
+    let server = axum::Server::try_bind(&opts.bind)
+        .map(|s| {
+            s.serve(app.into_make_service()).with_graceful_shutdown(async {
+                // Wait for either SIGTERM or SIGINT to shutdown
+                tokio::select! {
+                    _ = sigterm() => {}
+                    _ = sigint() => {}
+                }
+            })
         })
         .unwrap_or_else(|e| {
-            tracing::error!(message = "error binding to address", address = %opts.bind, error = %e);
+            tracing::error!(message = "error starting server", address = %opts.bind, err = %e);
             process::exit(1)
         });
 
-    tracing::info!(message = "server started", address = %sock);
-    server.await;
+    tracing::info!(message = "starting server", address = %opts.bind);
+    server.await.unwrap();
 
     tracing::info!("server shutdown");
     Ok(())
 }
 
-/// Return after the first SIGTERM signal received by this process
+async fn sigint() -> io::Result<()> {
+    tokio::signal::ctrl_c().await
+}
+
+#[cfg(unix)]
 async fn sigterm() -> io::Result<()> {
+    use tokio::signal::unix::{self, SignalKind};
     unix::signal(SignalKind::terminate())?.recv().await;
     Ok(())
 }
 
-/// Return after the first SIGINT signal received by this process
-async fn sigint() -> io::Result<()> {
-    unix::signal(SignalKind::interrupt())?.recv().await;
-    Ok(())
+#[cfg(not(unix))]
+async fn sigterm() -> io::Result<()> {
+    // No SIGTERM on windows. Create a no-op future that never resolves so we can
+    // have both sigterm() and sigint() above to trigger shutdown of the server.
+    std::future::pending::<io::Result<()>>().await
 }
 
 /// Task for periodically updating forecast metrics for multiple stations
