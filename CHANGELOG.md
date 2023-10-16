@@ -3,6 +3,7 @@
 ## v0.5.0 - 2023-10-15
 
 * Switch to Axum web framework. #19
+* Build Docker images and binaries for each release. #20
 
 ## v0.4.0 - 2022-03-13
 
