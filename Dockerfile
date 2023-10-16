@@ -1,8 +1,6 @@
 FROM rust:slim-bookworm AS BUILD
 COPY . .
-RUN apt-get update && \
-    apt-get install -y make perl libssl-dev && \
-    cargo build --release
+RUN cargo build --release
 
 FROM debian:bookworm-slim
 COPY --from=BUILD target/release/nws_exporter /usr/local/bin/
