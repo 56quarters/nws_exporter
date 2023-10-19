@@ -12,7 +12,7 @@ edition = "2021"
 
 [dependencies]
 axum = "0.6.20"
-clap = { version = "3.0.14", features = ["cargo", "derive", "std"], default-features = false }
+clap = { version = "4.1.8", features = ["cargo", "derive", "help", "error-context", "std", "usage", "wrap_help"], default_features = false }
 percent-encoding = "2.1.0"
 prometheus-client = "0.21.2"
 reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }

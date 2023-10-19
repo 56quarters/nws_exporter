@@ -1,5 +1,9 @@
 # Changelog
 
+## unreleased
+
+* Dependency updates. #23
+
 ## v0.5.0 - 2023-10-15
 
 * Switch to Axum web framework. #19
