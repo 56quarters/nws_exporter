@@ -46,30 +46,30 @@ struct NwsExporterApplication {
     /// NWS weather station ID to fetch forecasts for. Must be specified at least once and
     /// may be used multiple times (separated by spaces) to fetch forecasts for multiple NWS
     /// stations
-    #[clap(required = true)]
+    #[arg(required = true)]
     station: Vec<String>,
 
     /// Base URL for the Weather.gov API
-    #[clap(long, default_value_t = DEFAULT_API_URL.into())]
+    #[arg(long, default_value_t = DEFAULT_API_URL.into())]
     api_url: String,
 
     /// Logging verbosity. Allowed values are 'trace', 'debug', 'info', 'warn', and 'error'
     /// (case insensitive)
-    #[clap(long, default_value_t = DEFAULT_LOG_LEVEL)]
+    #[arg(long, default_value_t = DEFAULT_LOG_LEVEL)]
     log_level: Level,
 
     /// Fetch weather forecasts from the Weather.gov API at this interval, in seconds
-    #[clap(long, default_value_t = DEFAULT_REFERSH_SECS)]
+    #[arg(long, default_value_t = DEFAULT_REFERSH_SECS)]
     refresh_secs: u64,
 
     /// Timeout for fetching weather forecasts from the Weather.gov API, in milliseconds
-    #[clap(long, default_value_t = DEFAULT_TIMEOUT_MILLIS)]
+    #[arg(long, default_value_t = DEFAULT_TIMEOUT_MILLIS)]
     timeout_millis: u64,
 
     /// Address to bind to. By default, nws_exporter will bind to public address since
     /// the purpose is to expose metrics to an external system (Prometheus or another
     /// agent for ingestion)
-    #[clap(long, default_value_t = DEFAULT_BIND_ADDR.into())]
+    #[arg(long, default_value_t = DEFAULT_BIND_ADDR.into())]
     bind: SocketAddr,
 }
 
