@@ -1,8 +1,9 @@
 # Changelog
 
-## unreleased
+## v0.5.1 - 2023-10-21
 
 * Dependency updates. #23
+* Remove dependency on openssl. #22
 
 ## v0.5.0 - 2023-10-15
 
